@@ -12,7 +12,7 @@ export const verifyToken = (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+        req.admin = decoded;
         next();
     } catch (error) {
         return res.status(401).json({ message: 'Invalid token.' });
@@ -22,7 +22,7 @@ export const verifyToken = (req, res, next) => {
 // Admin Authentication Middleware
 export const isAdmin = async (req, res, next) => {
     try {
-        const admin = await Admin.findById(req.user.id);
+        const admin = await Admin.findById(req.admin.id);
         if (!admin) {
             return res.status(403).json({ message: 'Access denied. Admin only.' });
         }
