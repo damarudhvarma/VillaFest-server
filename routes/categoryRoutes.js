@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createCategoryController } from "../controllers/categoryController.js";
+import { createCategoryController, getCategoriesController } from "../controllers/categoryController.js";
 import { verifyToken, isAdmin } from "../middlewares/authMiddleware.js";
 import multer from "multer";
 import fs from "fs";
@@ -15,6 +15,10 @@ if (!fs.existsSync(uploadDir)) {
 
 const upload = multer({ dest: uploadDir });
 
+// Get all categories - no auth required
+categoryRouter.get("/", getCategoriesController);
+
+// Protected routes
 categoryRouter.post(
     "/create",
     verifyToken,
