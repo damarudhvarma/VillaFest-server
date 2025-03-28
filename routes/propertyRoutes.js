@@ -61,6 +61,6 @@ propertyRouter.post('/add-property',
     createPropertyController
 );
 
-propertyRouter.get('/get-properties', verifyToken, isAdmin, getAllPropertiesController);
+propertyRouter.get('/get-properties', verifyToken, getAllPropertiesController);
 
 export default propertyRouter;
