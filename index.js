@@ -10,6 +10,7 @@ import morgan from 'morgan';
 import categoryRouter from './routes/categoryRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
 import propertyRouter from './routes/propertyRoutes.js';
+import amenityRouter from './routes/amenityRoutes.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/users', userRouter);
 app.use('/admin', adminRouter);
 app.use('/categories', categoryRouter);
 app.use('/properties', propertyRouter);
+app.use('/amenities', amenityRouter);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to VillaFest API' });
