@@ -179,3 +179,18 @@ export const updateUserProfileController = async (req, res) => {
     }
 };
 
+export const getAllUsersController = async (req, res) => {
+    try {
+        const users = await User.find().select('-password');
+        res.status(200).json({
+            success: true,
+            data: users
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in getting all users',
+            error: error.message
+        });
+    }
+};
