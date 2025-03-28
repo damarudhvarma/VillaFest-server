@@ -1,5 +1,8 @@
 import Property from '../models/propertyModel.js';
 import Category from '../models/Category.js';
+import Amenity from '../models/amenityModel.js';
+import mongoose from 'mongoose';
+import path from 'path';
 
 export const createPropertyController = async (req, res) => {
     try {
@@ -10,7 +13,7 @@ export const createPropertyController = async (req, res) => {
             weekendPrice,
             description,
             rules,
-            amenities,
+            amenities: amenitiesJson,
             latitude,
             longitude,
             address,
@@ -19,8 +22,30 @@ export const createPropertyController = async (req, res) => {
             city,
             state,
             postalCode,
-            isActive
+            isActive,
+            maxGuests
         } = req.body;
+
+        // Parse the JSON strings
+        const parsedRules = JSON.parse(rules);
+        const parsedAmenities = JSON.parse(amenitiesJson);
+
+        // Validate required files
+        if (!req.files || !req.files.mainImage) {
+            return res.status(400).json({
+                success: false,
+                message: "Main image is required"
+            });
+        }
+
+        // Create property folder name
+        const propertyTitle = title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+
+        // Generate image paths
+        const mainImagePath = `/properties/${propertyTitle}/${req.files.mainImage[0].filename}`;
+        const additionalImagePaths = req.files.additionalImages
+            ? req.files.additionalImages.map(file => `/properties/${propertyTitle}/${file.filename}`)
+            : [];
 
         // Find the category and increment its properties count
         const categoryDoc = await Category.findById(category);
@@ -31,18 +56,27 @@ export const createPropertyController = async (req, res) => {
             });
         }
 
-        // Create the property with location coordinates
+        // Validate that all amenities exist
+        const amenityDocs = await Amenity.find({ _id: { $in: parsedAmenities } });
+        if (amenityDocs.length !== parsedAmenities.length) {
+            return res.status(404).json({
+                success: false,
+                message: "One or more amenities not found"
+            });
+        }
+
+        // Create the property with location coordinates and image paths
         const property = new Property({
             title,
             category,
-            price,
-            weekendPrice,
+            price: Number(price),
+            weekendPrice: Number(weekendPrice),
             description,
-            rules,
-            amenities,
+            rules: parsedRules,
+            amenities: parsedAmenities,
             location: {
                 type: 'Point',
-                coordinates: [longitude, latitude] // MongoDB uses [longitude, latitude] order
+                coordinates: [Number(longitude), Number(latitude)]
             },
             address: {
                 street: address,
@@ -54,7 +88,10 @@ export const createPropertyController = async (req, res) => {
                 name: ownerName,
                 contact: Number(ownerContact)
             },
-            isActive
+            isActive,
+            maxGuests: Number(maxGuests),
+            mainImage: mainImagePath,
+            additionalImages: additionalImagePaths
         });
 
         // Save the property
@@ -64,10 +101,15 @@ export const createPropertyController = async (req, res) => {
         categoryDoc.properties += 1;
         await categoryDoc.save();
 
+        // Populate the saved property with category and amenities data
+        const populatedProperty = await Property.findById(savedProperty._id)
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon');
+
         return res.status(201).json({
             success: true,
             message: "Property created successfully",
-            property: savedProperty
+            property: populatedProperty
         });
 
     } catch (error) {
@@ -82,9 +124,10 @@ export const createPropertyController = async (req, res) => {
 
 export const getAllPropertiesController = async (req, res) => {
     try {
-        // Find all properties with populated category
+        // Find all properties with populated category and amenities
         const properties = await Property.find()
             .populate('category', 'name image')
+            .populate('amenities', 'name icon iconUrl')
             .sort({ createdAt: -1 }); // Sort by newest first
 
         return res.status(200).json({

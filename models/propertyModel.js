@@ -31,8 +31,9 @@ const propertySchema = new mongoose.Schema({
         trim: true
     }],
     amenities: [{
-        type: String,
-        trim: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Amenity',
+        required: true
     }],
     location: {
         type: {
@@ -78,6 +79,20 @@ const propertySchema = new mongoose.Schema({
             required: true,
             trim: true
         }
+    },
+    mainImage: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    additionalImages: [{
+        type: String,
+        trim: true
+    }],
+    maxGuests: {
+        type: Number,
+        required: true,
+        min: 1
     },
     isActive: {
         type: Boolean,
