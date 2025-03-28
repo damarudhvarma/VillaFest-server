@@ -89,4 +89,26 @@ export const loginAdminController = async (req, res) => {
     }
 };
 
+export const getAdminController = async (req, res) => {
+    
+    try {
+        const admin = await Admin.findById(req.admin.id).select('-password');
+        res.status(200).json({
+            success: true,
+            message: 'Admin profile fetched successfully',
+            data: admin
+        });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Error in admin profile',
+                error: error.message
+            });
+        }   
+    }
+
+  export const logoutAdminController = async (req, res) => {}
+
+
+
 

@@ -1,10 +1,12 @@
 import { Router } from 'express';
-import { loginAdminController, registerAdminController } from '../controllers/adminControllers.js';
-
+import { getAdminController, loginAdminController, logoutAdminController, registerAdminController } from '../controllers/adminControllers.js';
+import { verifyToken } from '../middlewares/authMiddleware.js';
 const adminRouter = Router();
 
 adminRouter.post('/register', registerAdminController);
 adminRouter.post('/login', loginAdminController);
+adminRouter.get('/profile',verifyToken, getAdminController);
+adminRouter.get('/logiut',verifyToken, logoutAdminController);
 
 
 
