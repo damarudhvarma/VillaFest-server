@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createCategoryController, getCategoriesController } from "../controllers/categoryController.js";
+import { createCategoryController, deleteCategoryController, getCategoriesController } from "../controllers/categoryController.js";
 import { verifyToken, isAdmin } from "../middlewares/authMiddleware.js";
 import multer from "multer";
 import fs from "fs";
@@ -26,6 +26,9 @@ categoryRouter.post(
     upload.single("image"),
     createCategoryController
 );
+categoryRouter.delete('/:id', verifyToken, isAdmin, deleteCategoryController);
+
+
 
 export default categoryRouter;
 

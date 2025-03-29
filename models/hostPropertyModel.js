@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const propertySchema = new mongoose.Schema({
+const hostPropertySchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
@@ -68,11 +68,6 @@ const propertySchema = new mongoose.Schema({
             trim: true
         }
     },
-    host: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Host',
-        
-    },
     owner: {
         name: {
             type: String,
@@ -99,17 +94,52 @@ const propertySchema = new mongoose.Schema({
         required: true,
         min: 1
     },
+    
+    host: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Host',
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending'
+    },
+    
     isActive: {
         type: Boolean,
         default: true
-    }
+    },
+ 
+    minimumStay: {
+        type: Number,
+        default: 1,
+        min: 1
+    },
+    maximumStay: {
+        type: Number,
+        min: 1
+    },
+    availability: [{
+        date: {
+            type: Date,
+            
+        },
+        isAvailable: {
+            type: Boolean,
+            default: true
+        }
+    }]
 }, {
     timestamps: true
 });
 
 // Create a 2dsphere index for location-based queries
-propertySchema.index({ location: '2dsphere' });
+hostPropertySchema.index({ location: '2dsphere' });
 
-const Property = mongoose.model('Property', propertySchema);
+// Index for host and status for faster queries
+hostPropertySchema.index({ host: 1, status: 1 });
 
-export default Property;
+const HostProperty = mongoose.model('HostProperty', hostPropertySchema);
+
+export default HostProperty;

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import Admin from '../models/adminModel.js';
 import User from '../models/userModel.js';
+import Host from '../models/hostModel.js';
 
 // Verify JWT Token
 export const verifyToken = (req, res, next) => {
@@ -13,6 +14,7 @@ export const verifyToken = (req, res, next) => {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.admin = decoded;
+        
         next();
     } catch (error) {
         return res.status(401).json({ message: 'Invalid token.' });
@@ -28,6 +30,7 @@ export const isAdmin = async (req, res, next) => {
         }
         next();
     } catch (error) {
+        // console.error('Error in isAdmin:', error);
         return res.status(500).json({ message: 'Server error.' });
     }
 };
@@ -57,5 +60,53 @@ export const optionalAuth = (req, res, next) => {
         next();
     } catch (error) {
         next();
+    }
+}; 
+
+
+
+
+export const authenticateHost = async (req, res, next) => {
+    try {
+        // Get token from header
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided'
+            });
+        }
+
+        const token = authHeader.split(' ')[1];
+
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Get host from token
+        const host = await Host.findById(decoded._id);
+        if (!host) {
+            return res.status(401).json({
+                success: false,
+                message: 'Host not found'
+            });
+        }
+
+        // Check if host is active
+        if (!host.isActive) {
+            return res.status(401).json({
+                success: false,
+                message: 'Your account has been deactivated'
+            });
+        }
+
+        // Add host to request object
+        req.host = host;
+        next();
+    } catch (error) {
+        console.error('Error in authenticateHost:', error);
+        res.status(401).json({
+            success: false,
+            message: 'Invalid token'
+        });
     }
 }; 

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 const hostSchema = new mongoose.Schema({
@@ -20,7 +20,6 @@ const hostSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, 'Password is required'],
         minlength: [8, 'Password must be at least 8 characters long'],
         select: false, // This ensures password is not returned in queries by default
         match: [
@@ -61,7 +60,7 @@ const hostSchema = new mongoose.Schema({
     },
     isActive: {
         type: Boolean,
-        default: true
+        default: false
     },
     createdAt: {
         type: Date,

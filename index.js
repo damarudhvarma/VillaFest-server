@@ -12,6 +12,7 @@ import adminRouter from './routes/adminRoutes.js';
 import propertyRouter from './routes/propertyRoutes.js';
 import amenityRouter from './routes/amenityRoutes.js';
 import hostRouter from './routes/hostRoutes.js';
+import hostPropertyRouter from './routes/hostPropertyRoutes.js';
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/categories', categoryRouter);
 app.use('/properties', propertyRouter);
 app.use('/amenities', amenityRouter);
 app.use('/hosts', hostRouter);
+app.use('/host-properties', hostPropertyRouter);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to VillaFest API' });
