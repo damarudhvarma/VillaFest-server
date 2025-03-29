@@ -14,7 +14,7 @@ export const verifyToken = (req, res, next) => {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.admin = decoded;
-        
+
         next();
     } catch (error) {
         return res.status(401).json({ message: 'Invalid token.' });
@@ -61,7 +61,7 @@ export const optionalAuth = (req, res, next) => {
     } catch (error) {
         next();
     }
-}; 
+};
 
 
 
@@ -99,8 +99,8 @@ export const authenticateHost = async (req, res, next) => {
             });
         }
 
-        // Add host to request object
-        req.host = host;
+        // Add host to request object using a different property name
+        req.hostData = host;
         next();
     } catch (error) {
         console.error('Error in authenticateHost:', error);

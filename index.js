@@ -20,7 +20,7 @@ const app = express();
 app.use(cors({
     origin: [process.env.ADMINPANEL_URL, process.env.UserSide_URL],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 

@@ -40,7 +40,7 @@ const upload = multer({
 
 // Routes
 amenityRouter.post("/create", verifyToken, isAdmin, upload.single("icon"), createAmenity);
-amenityRouter.get("/", verifyToken, isAdmin, getAmenities);
+amenityRouter.get("/", getAmenities);
 amenityRouter.put("/:id", verifyToken, isAdmin, upload.single("icon"), updateAmenity);
 
 export default amenityRouter;

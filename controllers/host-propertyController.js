@@ -1,6 +1,7 @@
 import HostProperty from '../models/hostPropertyModel.js';
 import Category from '../models/Category.js';
 import Amenity from '../models/amenityModel.js';
+import Property from '../models/propertyModel.js';
 import mongoose from 'mongoose';
 import path from 'path';
 
@@ -17,24 +18,17 @@ export const createHostPropertyController = async (req, res) => {
             latitude,
             longitude,
             address,
-            ownerName,
-            ownerContact,
             city,
             state,
             postalCode,
             maxGuests,
-            minimumStay,
-            maximumStay,
-            checkInTime,
-            checkOutTime,
-            cleaningFee,
-            securityDeposit,
-            cancellationPolicy
+            owner
         } = req.body;
 
         // Parse the JSON strings
         const parsedRules = JSON.parse(rules);
         const parsedAmenities = JSON.parse(amenitiesJson);
+        const parsedOwner = JSON.parse(owner);
 
         // Validate required files
         if (!req.files || !req.files.mainImage) {
@@ -91,21 +85,14 @@ export const createHostPropertyController = async (req, res) => {
                 postalCode
             },
             owner: {
-                name: ownerName,
-                contact: Number(ownerContact)
+                name: parsedOwner.name,
+                contact: Number(parsedOwner.contact)
             },
             maxGuests: Number(maxGuests),
             mainImage: mainImagePath,
             additionalImages: additionalImagePaths,
-            host: req.host._id, // Set the host from authenticated user
-            status: 'pending', // Set initial status as pending
-            minimumStay: Number(minimumStay) || 1,
-            maximumStay: maximumStay ? Number(maximumStay) : undefined,
-            checkInTime: checkInTime || '14:00',
-            checkOutTime: checkOutTime || '12:00',
-            cleaningFee: cleaningFee ? Number(cleaningFee) : 0,
-            securityDeposit: securityDeposit ? Number(securityDeposit) : 0,
-            cancellationPolicy: cancellationPolicy || 'moderate'
+            host: req.hostData._id, // Set the host from authenticated user
+            status: 'pending' // Set initial status as pending
         });
 
         // Save the host property
@@ -140,9 +127,12 @@ export const createHostPropertyController = async (req, res) => {
 
 export const getHostPropertiesController = async (req, res) => {
     try {
-        const hostProperties = await HostProperty.find({ host: req.host._id });
+        const hostProperties = await HostProperty.find({ host: req.hostData._id })
+            .populate('category', 'name image')
+            .lean();
+
         res.status(200).json(hostProperties);
-    } catch (error) {   
+    } catch (error) {
         console.error("Error getting host properties:", error);
         return res.status(500).json({
             success: false,
@@ -150,5 +140,142 @@ export const getHostPropertiesController = async (req, res) => {
             error: error.message
         });
     }
-};  
+};
+
+export const getAllHostPropertiesController = async (req, res) => {
+    try {
+        const hostProperties = await HostProperty.find()
+            .populate('category', 'name image')
+            .lean();
+
+        res.status(200).json(hostProperties);
+    } catch (error) {
+        console.error("Error getting all host properties:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error getting all host properties",
+            error: error.message
+        });
+    }
+};
+
+export const approveHostPropertyController = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the host property
+        const hostProperty = await HostProperty.findById(id);
+        if (!hostProperty) {
+            return res.status(404).json({
+                success: false,
+                message: "Host property not found"
+            });
+        }
+
+        // Check if property is already approved
+        if (hostProperty.status === 'approved') {
+            return res.status(400).json({
+                success: false,
+                message: "Property is already approved"
+            });
+        }
+
+        // Update the host property status
+        hostProperty.status = 'approved';
+        await hostProperty.save();
+
+        // Calculate increased prices (11% increase)
+        const increasedPrice = Math.round(hostProperty.price * 1.11);
+        const increasedWeekendPrice = Math.round(hostProperty.weekendPrice * 1.11);
+
+        // Create a new property in the Property model with increased prices
+        const newProperty = new Property({
+            title: hostProperty.title,
+            category: hostProperty.category,
+            price: increasedPrice,
+            weekendPrice: increasedWeekendPrice,
+            description: hostProperty.description,
+            rules: hostProperty.rules,
+            amenities: hostProperty.amenities,
+            location: hostProperty.location,
+            address: hostProperty.address,
+            owner: hostProperty.owner,
+            mainImage: hostProperty.mainImage,
+            additionalImages: hostProperty.additionalImages,
+            maxGuests: hostProperty.maxGuests,
+            host: hostProperty.host,
+            isActive: true
+        });
+
+        // Save the new property
+        await newProperty.save();
+
+        // Populate the response data
+        const populatedHostProperty = await HostProperty.findById(id)
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon')
+            .populate('host', 'fullName email phoneNumber');
+
+        return res.status(200).json({
+            success: true,
+            message: "Property approved successfully",
+            property: populatedHostProperty
+        });
+
+    } catch (error) {
+        console.error("Error approving host property:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error approving host property",
+            error: error.message
+        });
+    }
+};
+
+export const rejectHostPropertyController = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the host property
+        const hostProperty = await HostProperty.findById(id);
+        if (!hostProperty) {
+            return res.status(404).json({
+                success: false,
+                message: "Host property not found"
+            });
+        }
+
+        // Check if property is already rejected
+        if (hostProperty.status === 'rejected') {
+            return res.status(400).json({
+                success: false,
+                message: "Property is already rejected"
+            });
+        }
+
+        // Update the host property status
+        hostProperty.status = 'rejected';
+        await hostProperty.save();
+
+        // Populate the response data
+        const populatedHostProperty = await HostProperty.findById(id)
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon')
+            .populate('host', 'fullName email phoneNumber');
+
+        return res.status(200).json({
+            success: true,
+            message: "Property rejected successfully",
+            property: populatedHostProperty
+        });
+
+    } catch (error) {
+        console.error("Error rejecting host property:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error rejecting host property",
+            error: error.message
+        });
+    }
+};
 

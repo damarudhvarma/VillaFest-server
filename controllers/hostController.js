@@ -122,7 +122,7 @@ export const loginHostController = async (req, res) => {
 // Get host profile
 export const getHostProfileController = async (req, res) => {
     try {
-        const host = await Host.findById(req.host._id);
+        const host = await Host.findById(req.hostData._id);
         if (!host) {
             return res.status(404).json({
                 success: false,
@@ -158,7 +158,7 @@ export const updateHostProfileController = async (req, res) => {
             });
         }
 
-        const host = await Host.findById(req.host._id);
+        const host = await Host.findById(req.hostData._id);
         if (!host) {
             return res.status(404).json({
                 success: false,
@@ -198,7 +198,7 @@ export const updateHostProfileController = async (req, res) => {
 export const changePasswordController = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-        const host = await Host.findById(req.host._id).select('+password');
+        const host = await Host.findById(req.hostData._id).select('+password');
 
         // Verify current password
         const isMatch = await host.comparePassword(currentPassword);
@@ -274,7 +274,7 @@ export const approveHostController = async (req, res) => {
     } catch (error) {
         console.error('Error in approveHostController:', error);
         res.status(500).json({
-            success: false, 
+            success: false,
             message: 'Error approving host',
             error: error.message
         });
@@ -284,7 +284,7 @@ export const approveHostController = async (req, res) => {
 export const rejectHostController = async (req, res) => {
     try {
         const { hostId } = req.params;
-        const host = await Host.findById(hostId);   
+        const host = await Host.findById(hostId);
 
         if (!host) {
             return res.status(404).json({
@@ -299,7 +299,7 @@ export const rejectHostController = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Host rejected successfully'
-        });     
+        });
     } catch (error) {
         console.error('Error in rejectHostController:', error);
         res.status(500).json({

@@ -108,18 +108,10 @@ const hostPropertySchema = new mongoose.Schema({
     
     isActive: {
         type: Boolean,
-        default: true
+        default: false
     },
  
-    minimumStay: {
-        type: Number,
-        default: 1,
-        min: 1
-    },
-    maximumStay: {
-        type: Number,
-        min: 1
-    },
+    
     availability: [{
         date: {
             type: Date,
