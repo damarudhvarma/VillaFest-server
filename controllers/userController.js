@@ -194,3 +194,19 @@ export const getAllUsersController = async (req, res) => {
         });
     }
 };
+
+export const getUserByIdController = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password');
+        res.status(200).json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in getting user by id',
+            error: error.message
+        });
+    }
+};  
