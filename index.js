@@ -18,7 +18,7 @@ const app = express();
 
 // Configure CORS with specific origin
 app.use(cors({
-    origin: [process.env.ADMINPANEL_URL, process.env.UserSide_URL],
+    origin: '*', // Allow requests from any origin
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']

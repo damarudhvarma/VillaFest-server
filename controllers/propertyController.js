@@ -154,6 +154,7 @@ export const getPropertyByIdController = async (req, res) => {
             .populate('category', 'name image')
             .populate('amenities', 'name icon iconUrl');
 
+
         if (!property) {
             return res.status(404).json({
                 success: false,
