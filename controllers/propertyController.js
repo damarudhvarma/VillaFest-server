@@ -146,3 +146,32 @@ export const getAllPropertiesController = async (req, res) => {
         });
     }
 };
+
+export const getPropertyByIdController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const property = await Property.findById(id)
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon iconUrl');
+
+        if (!property) {
+            return res.status(404).json({
+                success: false,
+                message: "Property not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Property fetched successfully",
+            property
+        });
+    } catch (error) {
+        console.error("Error fetching property:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching property",
+            error: error.message
+        });
+    }
+};
