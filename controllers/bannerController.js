@@ -51,7 +51,7 @@ export const createBanner = async (req, res) => {
 
 export const getBanners = async (req, res) => {
     try {
-        const banners = await Banner.find().sort({ createdAt: -1 });
+        const banners = await Banner.find({isActive:true}).sort({ createdAt: -1 });
         res.status(200).json({
             success: true,
             banners
