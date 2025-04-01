@@ -4,7 +4,7 @@ import fs from "fs";
 
 export const createAmenity = async (req, res) => {
     try {
-        const { name, isActive } = req.body;
+        const { name } = req.body;
 
         // Create public/amenities directory if it doesn't exist
         const uploadDir = path.join(process.cwd(), "public", "amenities");
@@ -29,7 +29,7 @@ export const createAmenity = async (req, res) => {
             name,
             icon: iconUrl,
             iconUrl: iconUrl,
-            isActive: isActive === "true",
+            isActive: "true",
         });
 
         res.status(201).json({
@@ -136,6 +136,44 @@ export const updateAmenity = async (req, res) => {
             success: false,
             message: "Error updating amenity",
             error: error.message,
+        });
+    }
+};
+
+export const deleteAmenityController = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the amenity first to get the icon path
+        const amenity = await Amenity.findById(id);
+        if (!amenity) {
+            return res.status(404).json({
+                success: false,
+                message: "Amenity not found"
+            });
+        }
+
+        // Delete the icon file if it exists
+        if (amenity.icon) {
+            const iconPath = path.join('public', amenity.icon);
+            if (fs.existsSync(iconPath)) {
+                fs.unlinkSync(iconPath);
+            }
+        }
+
+        // Delete the amenity from database
+        await Amenity.findByIdAndDelete(id);
+
+        res.status(200).json({
+            success: true,
+            message: "Amenity deleted successfully"
+        });
+    } catch (error) {
+        console.error('Error deleting amenity:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error deleting amenity",
+            error: error.message
         });
     }
 };

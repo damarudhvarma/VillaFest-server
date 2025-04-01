@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createAmenity, getAmenities, updateAmenity } from "../controllers/amenityController.js";
+import { createAmenity, deleteAmenityController, getAmenities, updateAmenity } from "../controllers/amenityController.js";
 import { verifyToken, isAdmin } from "../middlewares/authMiddleware.js";
 import multer from "multer";
 import path from "path";
@@ -42,6 +42,7 @@ const upload = multer({
 amenityRouter.post("/create", verifyToken, isAdmin, upload.single("icon"), createAmenity);
 amenityRouter.get("/", getAmenities);
 amenityRouter.put("/:id", verifyToken, isAdmin, upload.single("icon"), updateAmenity);
+amenityRouter.delete("/:id",verifyToken,isAdmin,deleteAmenityController)
 
 export default amenityRouter;
 
