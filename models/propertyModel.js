@@ -35,6 +35,10 @@ const propertySchema = new mongoose.Schema({
         ref: 'Amenity',
         required: true
     }],
+    customAmenities: [{
+        type: String,
+        trim: true
+    }],
     location: {
         type: {
             type: String,
@@ -71,7 +75,7 @@ const propertySchema = new mongoose.Schema({
     host: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Host',
-        
+
     },
     owner: {
         name: {
