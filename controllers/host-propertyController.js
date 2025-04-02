@@ -27,8 +27,12 @@ export const createHostPropertyController = async (req, res) => {
 
         // Parse the JSON strings
         const parsedRules = JSON.parse(rules);
-        const parsedAmenities = JSON.parse(amenitiesJson);
+        const parsedAmenitiesData = JSON.parse(amenitiesJson);
         const parsedOwner = JSON.parse(owner);
+
+        // Extract selected amenities and custom amenities
+        const selectedAmenities = parsedAmenitiesData.selected || [];
+        const customAmenities = parsedAmenitiesData.custom || [];
 
         // Validate required files
         if (!req.files || !req.files.mainImage) {
@@ -57,23 +61,28 @@ export const createHostPropertyController = async (req, res) => {
         }
 
         // Validate that all amenities exist
-        const amenityDocs = await Amenity.find({ _id: { $in: parsedAmenities } });
-        if (amenityDocs.length !== parsedAmenities.length) {
+        const amenityDocs = await Amenity.find({ _id: { $in: selectedAmenities } });
+        if (amenityDocs.length !== selectedAmenities.length) {
             return res.status(404).json({
                 success: false,
                 message: "One or more amenities not found"
             });
         }
 
+        // Calculate decreased prices (by 11%)
+        const decreasedPrice = Math.round(Number(price) * 0.89);
+        const decreasedWeekendPrice = Math.round(Number(weekendPrice) * 0.89);
+
         // Create the host property with all details
         const hostProperty = new HostProperty({
             title,
             category,
-            price: Number(price),
-            weekendPrice: Number(weekendPrice),
+            price: decreasedPrice,
+            weekendPrice: decreasedWeekendPrice,
             description,
             rules: parsedRules,
-            amenities: parsedAmenities,
+            amenities: selectedAmenities,
+            customAmenities: customAmenities, // Store custom amenities separately
             location: {
                 type: 'Point',
                 coordinates: [Number(longitude), Number(latitude)]
@@ -111,7 +120,11 @@ export const createHostPropertyController = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Host property created successfully and pending approval",
-            property: populatedHostProperty
+            property: populatedHostProperty,
+            originalPrices: {
+                price: Number(price),
+                weekendPrice: Number(weekendPrice)
+            }
         });
 
     } catch (error) {
@@ -123,7 +136,6 @@ export const createHostPropertyController = async (req, res) => {
         });
     }
 };
-
 
 export const getHostPropertiesController = async (req, res) => {
     try {
@@ -197,6 +209,7 @@ export const approveHostPropertyController = async (req, res) => {
             description: hostProperty.description,
             rules: hostProperty.rules,
             amenities: hostProperty.amenities,
+            customAmenities: hostProperty.customAmenities, // Include custom amenities
             location: hostProperty.location,
             address: hostProperty.address,
             owner: hostProperty.owner,

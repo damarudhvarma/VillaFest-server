@@ -35,6 +35,10 @@ const hostPropertySchema = new mongoose.Schema({
         ref: 'Amenity',
         required: true
     }],
+    customAmenities: [{
+        type: String,
+        trim: true
+    }],
     location: {
         type: {
             type: String,
