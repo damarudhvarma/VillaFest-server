@@ -1,5 +1,6 @@
 import User from '../models/userModel.js';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
+import Property from '../models/propertyModel.js';
 
 export const registerUserController = async (req, res) => {
     const { firstName, lastName, mobileNumber, email, password } = req.body;
@@ -197,7 +198,7 @@ export const getAllUsersController = async (req, res) => {
 
 export const getUserByIdController = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id).select('-password');
+        const user = await User.findById(req.jwt.id).select('-password');
         res.status(200).json({
             success: true,
             data: user
@@ -206,6 +207,102 @@ export const getUserByIdController = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error in getting user by id',
+            error: error.message
+        });
+    }
+};  
+
+export const addToWishlistController = async (req, res) => {
+    try {
+        const { propertyId } = req.body;
+        const user = await User.findById(req.jwt.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }           
+        
+        const property = await Property.findById(propertyId);
+        if (!property) {
+            return res.status(404).json({
+                success: false,
+                message: 'Property not found'
+            });
+        }       
+
+        if (user.wishlist.includes(propertyId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Property already in wishlist'
+            });
+        }
+
+        user.wishlist.push(propertyId);
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Property added to wishlist'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in adding property to wishlist',
+            error: error.message
+        }); 
+    }
+};
+
+export const getWishlistController = async (req, res) => {
+    try {
+        const user = await User.findById(req.jwt.id).select('wishlist');
+        const properties = await Property.find({ _id: { $in: user.wishlist } });    
+
+        res.status(200).json({  
+            success: true,
+            data: properties
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in getting wishlist',
+            error: error.message
+        });
+    }
+}; 
+
+export const removeFromWishlistController = async (req, res) => {
+    try {
+        const { propertyId } = req.params;
+        const user = await User.findById(req.jwt.id);   
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }   
+
+        if (!user.wishlist.includes(propertyId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Property not in wishlist'
+            });
+        }   
+
+        user.wishlist = user.wishlist.filter(id => id.toString() !== propertyId);
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Property removed from wishlist'
+        }); 
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in removing property from wishlist',
             error: error.message
         });
     }
