@@ -92,7 +92,7 @@ export const loginAdminController = async (req, res) => {
 export const getAdminController = async (req, res) => {
     
     try {
-        const admin = await Admin.findById(req.admin.id).select('-password');
+        const admin = await Admin.findById(req.jwt.id).select('-password');
         res.status(200).json({
             success: true,
             message: 'Admin profile fetched successfully',
