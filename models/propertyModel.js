@@ -106,7 +106,21 @@ const propertySchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
-    }
+    },
+    bookedDates: [{
+        checkIn: {
+            type: Date,
+            required: true
+        },
+        checkOut: {
+            type: Date,
+            required: true
+        },
+        bookingId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Booking'
+        }
+    }]
 }, {
     timestamps: true
 });

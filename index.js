@@ -14,12 +14,12 @@ import amenityRouter from './routes/amenityRoutes.js';
 import hostRouter from './routes/hostRoutes.js';
 import hostPropertyRouter from './routes/hostPropertyRoutes.js';
 import bannerRouter from './routes/bannerRoutes.js';
-
+import paymentRouter from './routes/paymentRoutes.js';
 const app = express();
 
 // Configure CORS with specific origin
 app.use(cors({
-    origin: [process.env.USER_PRODUCTION_URL, process.env.ADMINPANEL_URL, process.env.UserSide_URL], 
+    origin: [process.env.USER_PRODUCTION_URL, process.env.ADMINPANEL_URL, process.env.UserSide_URL],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -42,6 +42,7 @@ app.use('/amenities', amenityRouter);
 app.use('/hosts', hostRouter);
 app.use('/host-properties', hostPropertyRouter);
 app.use('/banners', bannerRouter);
+app.use('/api/payment', paymentRouter);
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to VillaFest API' });
 });
