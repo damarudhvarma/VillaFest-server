@@ -134,7 +134,7 @@ export const getUserProfileController = async (req, res) => {
 export const updateUserProfileController = async (req, res) => {
     try {
         const { firstName, lastName, mobileNumber } = req.body;
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.jwt.id);
 
         if (!user) {
             return res.status(404).json({
@@ -210,7 +210,7 @@ export const getUserByIdController = async (req, res) => {
             error: error.message
         });
     }
-};  
+};
 
 export const addToWishlistController = async (req, res) => {
     try {
@@ -222,15 +222,15 @@ export const addToWishlistController = async (req, res) => {
                 success: false,
                 message: 'User not found'
             });
-        }           
-        
+        }
+
         const property = await Property.findById(propertyId);
         if (!property) {
             return res.status(404).json({
                 success: false,
                 message: 'Property not found'
             });
-        }       
+        }
 
         if (user.wishlist.includes(propertyId)) {
             return res.status(400).json({
@@ -251,16 +251,16 @@ export const addToWishlistController = async (req, res) => {
             success: false,
             message: 'Error in adding property to wishlist',
             error: error.message
-        }); 
+        });
     }
 };
 
 export const getWishlistController = async (req, res) => {
     try {
         const user = await User.findById(req.jwt.id).select('wishlist');
-        const properties = await Property.find({ _id: { $in: user.wishlist } });    
+        const properties = await Property.find({ _id: { $in: user.wishlist } });
 
-        res.status(200).json({  
+        res.status(200).json({
             success: true,
             data: properties
         });
@@ -271,26 +271,26 @@ export const getWishlistController = async (req, res) => {
             error: error.message
         });
     }
-}; 
+};
 
 export const removeFromWishlistController = async (req, res) => {
     try {
         const { propertyId } = req.params;
-        const user = await User.findById(req.jwt.id);   
+        const user = await User.findById(req.jwt.id);
 
         if (!user) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found'
             });
-        }   
+        }
 
         if (!user.wishlist.includes(propertyId)) {
             return res.status(400).json({
                 success: false,
                 message: 'Property not in wishlist'
             });
-        }   
+        }
 
         user.wishlist = user.wishlist.filter(id => id.toString() !== propertyId);
         await user.save();
@@ -298,7 +298,7 @@ export const removeFromWishlistController = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Property removed from wishlist'
-        }); 
+        });
     } catch (error) {
         res.status(500).json({
             success: false,
