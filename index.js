@@ -15,6 +15,7 @@ import hostRouter from './routes/hostRoutes.js';
 import hostPropertyRouter from './routes/hostPropertyRoutes.js';
 import bannerRouter from './routes/bannerRoutes.js';
 import paymentRouter from './routes/paymentRoutes.js';
+import bookingRouter from './routes/bookingRoutes.js';
 const app = express();
 
 // Configure CORS with specific origin
@@ -43,6 +44,7 @@ app.use('/hosts', hostRouter);
 app.use('/host-properties', hostPropertyRouter);
 app.use('/banners', bannerRouter);
 app.use('/api/payment', paymentRouter);
+app.use('/bookings', bookingRouter);
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to VillaFest API' });
 });
