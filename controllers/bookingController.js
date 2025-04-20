@@ -179,7 +179,7 @@ export const cancelBooking = async (req, res) => {
                     },
                     createdAt: new Date(refundResponse.created_at * 1000), // Convert Unix timestamp to Date
                     processedAt: refundResponse.processed_at ? new Date(refundResponse.processed_at * 1000) : null,
-                    referenceId: refundResponse.receipt || null
+                    referenceId: refundResponse.receipt || undefined // Use undefined instead of null
                 });
 
                 await refundRecord.save();
