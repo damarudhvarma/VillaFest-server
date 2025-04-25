@@ -1,19 +1,17 @@
 import Host from '../models/hostModel.js';
 import { validationResult } from 'express-validator';
 import path from 'path';
+import fs from 'fs';
 
 // Create new host
 export const createHostController = async (req, res) => {
     try {
-        console.log('Request body:', req.body);
-        console.log('Files:', req.files);
-
         // Process uploaded photos
         let photoPaths = [];
         if (req.files && req.files.length > 0) {
-            // Get the directory name from the first file path
-            const dirName = path.dirname(req.files[0].path).split('/').pop();
-            photoPaths = req.files.map(file => `/host-enquiry/${dirName}/${file.filename}`);
+            // Use the relative directory path stored in the request
+            const relativeDir = req.relativeUploadDir || 'host-enquiry';
+            photoPaths = req.files.map(file => `/${relativeDir}/${path.basename(file.filename)}`);
         }
 
         // Parse bank details if it's a string
@@ -348,12 +346,27 @@ export const rejectHostController = async (req, res) => {
             });
         }
 
-        host.isActive = false;
-        await host.save();
+        // Get the property title from the host document
+        const propertyTitle = host.enquiry?.propertyDetails?.title;
+
+        // Delete the image folder if it exists
+        if (propertyTitle) {
+            const propertyFolderName = propertyTitle.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+            const imageFolderPath = path.join(process.cwd(), 'public', 'host-enquiry', propertyFolderName);
+
+            // Check if the folder exists and delete it
+            if (fs.existsSync(imageFolderPath)) {
+                fs.rmSync(imageFolderPath, { recursive: true, force: true });
+                console.log(`Deleted image folder: ${imageFolderPath}`);
+            }
+        }
+
+        // Delete the host document
+        await Host.findByIdAndDelete(hostId);
 
         res.status(200).json({
             success: true,
-            message: 'Host rejected successfully'
+            message: 'Host rejected and deleted successfully'
         });
     } catch (error) {
         console.error('Error in rejectHostController:', error);
@@ -364,62 +377,3 @@ export const rejectHostController = async (req, res) => {
         });
     }
 };
-
-export const demoRequestController = async (req, res) => {
-    try {
-        console.log('Request body:', req.body);
-        console.log('Files:', req.files);
-
-        // Process uploaded photos
-        let photoPaths = [];
-        if (req.files && req.files.length > 0) {
-            // Get the directory name from the first file path
-            const dirName = path.dirname(req.files[0].path).split('/').pop();
-            photoPaths = req.files.map(file => `/host-enquiry/${dirName}/${file.filename}`);
-        }
-
-        // Create a demo request object
-        const demoRequest = {
-            propertyDetails: {
-                title: req.body.propertyTitle,
-                type: req.body.propertyType,
-                category: req.body.category,
-                description: req.body.description,
-                regularPrice: req.body.regularPrice,
-                weekendPrice: req.body.weekendPrice,
-                maxGuests: req.body.maxGuests,
-                address: req.body.address,
-                city: req.body.city,
-                state: req.body.state,
-                zipCode: req.body.zipCode,
-                latitude: req.body.latitude,
-                longitude: req.body.longitude,
-                amenities: req.body.amenities,
-                rules: req.body.propertyRules,
-                photos: photoPaths
-            },
-            hostDetails: {
-                name: req.body.hostName,
-                email: req.body.hostEmail,
-                phone: req.body.hostPhone,
-                bankDetails: req.body.bankDetails,
-                country: req.body.country
-            },
-            createdAt: new Date()
-        };
-
-        // Here you would typically save this to a database
-        // For now, we'll just log it
-        console.log('Demo request data:', JSON.stringify(demoRequest, null, 2));
-
-        // Send a success response
-
-    } catch (error) {
-        console.error('Error in demo request:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error in demo request',
-            error: error.message
-        });
-    }
-}

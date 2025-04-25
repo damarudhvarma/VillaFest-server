@@ -8,7 +8,7 @@ import {
     getHostsController,
     approveHostController,
     rejectHostController,
-    demoRequestController
+
 } from '../controllers/hostController.js';
 
 
@@ -30,19 +30,26 @@ const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         // Create a default directory if property title is not available
         let dir = uploadDir;
+        let relativeDir = "host-enquiry"; // This will be used for the database path
 
         // If property title is available in the request body, use it to create a subdirectory
         if (req.body && req.body.propertyTitle) {
             const propertyTitle = req.body.propertyTitle.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
             dir = `${uploadDir}/${propertyTitle}`;
+            relativeDir = `host-enquiry/${propertyTitle}`;
         } else {
             // Use a timestamp-based directory if property title is not available
             const timestamp = Date.now();
             dir = `${uploadDir}/property-${timestamp}`;
+            relativeDir = `host-enquiry/property-${timestamp}`;
         }
 
         // Create directory if it doesn't exist
         fs.mkdirSync(dir, { recursive: true });
+
+        // Store the relative directory path in the request for later use
+        req.relativeUploadDir = relativeDir;
+
         cb(null, dir);
     },
     filename: function (req, file, cb) {
@@ -73,8 +80,7 @@ hostRouter.post('/register', upload.array('propertyPhotos', 10), createHostContr
 hostRouter.post('/login', loginHostController);
 hostRouter.get('/', verifyToken, isAdmin, getHostsController);
 hostRouter.put('/:hostId/approve', verifyToken, isAdmin, approveHostController);
-hostRouter.put('/:hostId/reject', verifyToken, isAdmin, rejectHostController);
-hostRouter.post('/demo-request', demoRequestController);
+hostRouter.delete('/:hostId/reject', verifyToken, isAdmin, rejectHostController);
 
 hostRouter.get('/profile', authenticateHost, getHostProfileController);
 
