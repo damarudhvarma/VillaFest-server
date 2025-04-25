@@ -58,6 +58,64 @@ const hostSchema = new mongoose.Schema({
             match: [/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Please enter a valid IFSC code']
         }
     },
+    enquiry: {
+        locationDetails: {
+            address: {
+                type: String,
+                trim: true
+            },
+            city: {
+                type: String,
+                trim: true
+            },
+            state: {
+                type: String,
+                trim: true
+            },
+            postalCode: {
+                type: String,
+                trim: true
+            },
+            country: {
+                type: String,
+                trim: true
+            }
+        },
+        amenities: [{
+            type: String,
+            trim: true
+        }],
+        propertyRules: [{
+            type: String,
+            trim: true
+        }],
+        propertyDetails: {
+            title: {
+                type: String,
+                trim: true
+            },
+            regularPrice: {
+                type: Number,
+                min: 0
+            },
+            weekendPrice: {
+                type: Number,
+                min: 0
+            },
+            guestLimit: {
+                type: Number,
+                min: 1
+            },
+            description: {
+                type: String,
+                trim: true
+            },
+            photos: [{
+                type: String,
+                trim: true
+            }]
+        }
+    },
     isActive: {
         type: Boolean,
         default: false
@@ -76,7 +134,7 @@ const hostSchema = new mongoose.Schema({
 
 // Hash password before saving
 hostSchema.pre('save', async function (next) {
-    
+
     if (!this.isModified('password')) {
         return next();
     }
@@ -111,7 +169,7 @@ hostSchema.methods.generateAuthToken = function () {
             isActive: this.isActive
         },
         process.env.JWT_SECRET,
-       
+
     );
     return token;
 };

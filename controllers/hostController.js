@@ -1,21 +1,56 @@
 import Host from '../models/hostModel.js';
 import { validationResult } from 'express-validator';
+import path from 'path';
 
 // Create new host
 export const createHostController = async (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                success: false,
-                errors: errors.array()
-            });
+        console.log('Request body:', req.body);
+        console.log('Files:', req.files);
+
+        // Process uploaded photos
+        let photoPaths = [];
+        if (req.files && req.files.length > 0) {
+            // Get the directory name from the first file path
+            const dirName = path.dirname(req.files[0].path).split('/').pop();
+            photoPaths = req.files.map(file => `/host-enquiry/${dirName}/${file.filename}`);
         }
 
-        const { fullName, email, password, phoneNumber, bankingDetails } = req.body;
+        // Parse bank details if it's a string
+        let bankDetails = req.body.bankDetails;
+        if (typeof bankDetails === 'string') {
+            try {
+                bankDetails = JSON.parse(bankDetails);
+            } catch (error) {
+                console.error('Error parsing bank details:', error);
+                bankDetails = {};
+            }
+        }
+
+        // Parse amenities and property rules if they're strings
+        let amenities = req.body.amenities;
+        let propertyRules = req.body.propertyRules;
+
+        if (typeof amenities === 'string') {
+            try {
+                amenities = JSON.parse(amenities);
+            } catch (error) {
+                console.error('Error parsing amenities:', error);
+                amenities = [];
+            }
+        }
+
+        if (typeof propertyRules === 'string') {
+            try {
+                propertyRules = JSON.parse(propertyRules);
+            } catch (error) {
+                console.error('Error parsing property rules:', error);
+                propertyRules = [];
+            }
+        }
 
         // Check if host already exists
-        const existingHost = await Host.findOne({ email });
+        const existingHost = await Host.findOne({ email: req.body.hostEmail });
         if (existingHost) {
             return res.status(400).json({
                 success: false,
@@ -25,30 +60,50 @@ export const createHostController = async (req, res) => {
 
         // Create new host
         const host = new Host({
-            fullName,
-            email,
-            password,
-            phoneNumber,
-            bankingDetails
+            fullName: req.body.hostName,
+            email: req.body.hostEmail,
+            phoneNumber: req.body.hostPhone,
+            bankingDetails: {
+                accountHolderName: bankDetails.accountHolder,
+                accountNumber: bankDetails.accountNumber,
+                bankName: bankDetails.bankName,
+                ifscCode: bankDetails.ifscCode
+            },
+            enquiry: {
+                locationDetails: {
+                    address: req.body.address,
+                    city: req.body.city,
+                    state: req.body.state,
+                    postalCode: req.body.zipCode,
+                    country: req.body.country
+                },
+                amenities: amenities,
+                propertyRules: propertyRules,
+                propertyDetails: {
+                    title: req.body.propertyTitle,
+                    regularPrice: req.body.regularPrice,
+                    weekendPrice: req.body.weekendPrice,
+                    guestLimit: req.body.maxGuests,
+                    description: req.body.description,
+                    photos: photoPaths
+                }
+            }
         });
 
         await host.save();
 
-        // Generate tokens
+        // Generate token
         const authToken = host.generateAuthToken();
-
 
         // Remove password from response
         const hostResponse = host.toObject();
-        delete hostResponse.password;
 
         res.status(201).json({
             success: true,
             message: 'Host created successfully',
             data: {
                 host: hostResponse,
-                authToken,
-
+                authToken
             }
         });
     } catch (error) {
@@ -309,3 +364,62 @@ export const rejectHostController = async (req, res) => {
         });
     }
 };
+
+export const demoRequestController = async (req, res) => {
+    try {
+        console.log('Request body:', req.body);
+        console.log('Files:', req.files);
+
+        // Process uploaded photos
+        let photoPaths = [];
+        if (req.files && req.files.length > 0) {
+            // Get the directory name from the first file path
+            const dirName = path.dirname(req.files[0].path).split('/').pop();
+            photoPaths = req.files.map(file => `/host-enquiry/${dirName}/${file.filename}`);
+        }
+
+        // Create a demo request object
+        const demoRequest = {
+            propertyDetails: {
+                title: req.body.propertyTitle,
+                type: req.body.propertyType,
+                category: req.body.category,
+                description: req.body.description,
+                regularPrice: req.body.regularPrice,
+                weekendPrice: req.body.weekendPrice,
+                maxGuests: req.body.maxGuests,
+                address: req.body.address,
+                city: req.body.city,
+                state: req.body.state,
+                zipCode: req.body.zipCode,
+                latitude: req.body.latitude,
+                longitude: req.body.longitude,
+                amenities: req.body.amenities,
+                rules: req.body.propertyRules,
+                photos: photoPaths
+            },
+            hostDetails: {
+                name: req.body.hostName,
+                email: req.body.hostEmail,
+                phone: req.body.hostPhone,
+                bankDetails: req.body.bankDetails,
+                country: req.body.country
+            },
+            createdAt: new Date()
+        };
+
+        // Here you would typically save this to a database
+        // For now, we'll just log it
+        console.log('Demo request data:', JSON.stringify(demoRequest, null, 2));
+
+        // Send a success response
+
+    } catch (error) {
+        console.error('Error in demo request:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error in demo request',
+            error: error.message
+        });
+    }
+}
