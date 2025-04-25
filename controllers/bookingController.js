@@ -15,7 +15,7 @@ export const getBookings = async (req, res) => {
     try {
         // Get all bookings for the authenticated user with specific property details
         const bookings = await Booking.find({ user: req.jwt.id })
-            .select('_id checkIn checkOut totalPrice paymentStatus property')
+            .select('_id checkIn checkOut totalPrice paymentStatus status property')
             .populate({
                 path: 'property',
                 select: '_id title mainImage additionalImages location'
@@ -36,6 +36,7 @@ export const getBookings = async (req, res) => {
                 location: booking.property.location
             },
             paymentStatus: booking.paymentStatus,
+            status: booking.status,
             amountPaid: booking.totalPrice
         }));
 
