@@ -15,10 +15,14 @@ export const getBookings = async (req, res) => {
     try {
         // Get all bookings for the authenticated user with specific property details
         const bookings = await Booking.find({ user: req.jwt.id })
-            .select('_id checkIn checkOut totalPrice paymentStatus status property')
+            .select('_id checkIn checkOut totalPrice paymentStatus status property host')
             .populate({
                 path: 'property',
                 select: '_id title mainImage additionalImages location'
+            })
+            .populate({
+                path: 'host',
+                select: 'fullName email phoneNumber'
             })
             .sort({ createdAt: -1 }); // Sort by newest first
 
@@ -34,6 +38,12 @@ export const getBookings = async (req, res) => {
                 title: booking.property.title,
                 images: [booking.property.mainImage, ...booking.property.additionalImages],
                 location: booking.property.location
+            },
+            hostDetails: {
+                id: booking.host._id,
+                name: booking.host.fullName,
+                email: booking.host.email,
+                phoneNumber: booking.host.phoneNumber
             },
             paymentStatus: booking.paymentStatus,
             status: booking.status,
@@ -65,6 +75,10 @@ export const getAllBookings = async (req, res) => {
                 path: 'user',
                 select: 'firstName lastName email mobileNumber'
             })
+            .populate({
+                path: 'host',
+                select: 'fullName email phoneNumber'
+            })
             .sort({ createdAt: -1 }); // Sort by newest first
 
         // Format the response
@@ -85,6 +99,12 @@ export const getAllBookings = async (req, res) => {
                 name: `${booking.user.firstName} ${booking.user.lastName}`,
                 email: booking.user.email,
                 mobileNumber: booking.user.mobileNumber
+            },
+            hostDetails: {
+                id: booking.host._id,
+                name: booking.host.fullName,
+                email: booking.host.email,
+                phoneNumber: booking.host.phoneNumber
             },
             numberOfGuests: booking.numberOfGuests,
             totalPrice: booking.totalPrice,
@@ -236,3 +256,69 @@ export const cancelBooking = async (req, res) => {
         });
     }
 };
+
+export const getHostPropertyBookings = async (req, res) => {
+    try {
+        const host = req.hostData;
+
+        // Find all bookings for the host using the new host field
+        const bookings = await Booking.find({
+            host: host._id
+        })
+            .populate({
+                path: 'property',
+                select: 'title mainImage additionalImages location price'
+            })
+            .populate({
+                path: 'user',
+                select: 'firstName lastName email mobileNumber'
+            })
+            .sort({ createdAt: -1 });
+
+        // Format the response similar to getAllBookings
+        const formattedBookings = bookings.map(booking => {
+            // Calculate the host's share (89% of total price)
+            const hostShare = booking.totalPrice * 0.89;
+
+            return {
+                id: booking._id,
+                bookingDate: {
+                    checkIn: booking.checkIn,
+                    checkOut: booking.checkOut
+                },
+                propertyDetails: {
+                    id: booking.property._id,
+                    title: booking.property.title,
+                    images: [booking.property.mainImage, ...booking.property.additionalImages],
+                    location: booking.property.location
+                },
+                userDetails: {
+                    id: booking.user._id,
+                    name: `${booking.user.firstName} ${booking.user.lastName}`,
+                    email: booking.user.email,
+                    mobileNumber: booking.user.mobileNumber
+                },
+                numberOfGuests: booking.numberOfGuests,
+                yourShare: hostShare, // Use the reduced price (89% of original)
+                // Keep the original price for reference
+                status: booking.status,
+                paymentStatus: booking.paymentStatus,
+                createdAt: booking.createdAt
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            count: formattedBookings.length,
+            data: formattedBookings
+        });
+    } catch (error) {
+        console.error('Get Host Property Bookings Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error in fetching host property bookings',
+            error: error.message
+        });
+    }
+};
+

@@ -11,6 +11,11 @@ const bookingSchema = new mongoose.Schema({
         ref: 'User',
         required: [true, 'User is required']
     },
+    host: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Host',
+        
+    },
     checkIn: {
         type: Date,
         required: [true, 'Check-in date is required']
@@ -36,7 +41,7 @@ const bookingSchema = new mongoose.Schema({
     },
     paymentStatus: {
         type: String,
-        enum: ['pending', 'paid', 'refunded','not eligible for refund'],
+        enum: ['pending', 'paid', 'refunded', 'not eligible for refund'],
         default: 'pending'
     },
     paymentDetails: {
