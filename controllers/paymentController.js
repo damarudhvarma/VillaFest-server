@@ -193,10 +193,11 @@ export const verifyPayment = async (req, res) => {
         const checkInDate = new Date(bookingDetails.checkInDate);
         const checkOutDate = new Date(bookingDetails.checkOutDate);
 
-        // Create booking
+        // Create booking with host ID from property
         const booking = new Booking({
             property: propertyId,
             user: userId,
+            host: property.host, // Add the host ID from the property
             checkIn: checkInDate,
             checkOut: checkOutDate,
             totalPrice: bookingDetails.totalPrice,
