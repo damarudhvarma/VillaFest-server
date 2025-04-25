@@ -72,7 +72,7 @@ export const createCoupon = async (req, res) => {
 export const getAllCoupons = async (req, res) => {
     try {
         const { active, current } = req.query;
-       
+
         const coupons = await Coupon.find().sort({ createdAt: -1 });
 
         // Calculate validity status for each coupon
@@ -100,6 +100,71 @@ export const getAllCoupons = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error fetching coupons',
+            error: error.message
+        });
+    }
+};
+
+export const updateCoupon = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        // Find the coupon by ID
+        const coupon = await Coupon.findById(id);
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: 'Coupon not found'
+            });
+        }
+
+        // Update the isActive status
+        coupon.isActive = isActive;
+        await coupon.save();
+
+        res.status(200).json({
+            success: true,
+            message: `Coupon ${isActive ? 'activated' : 'deactivated'} successfully`,
+            data: coupon
+        });
+    } catch (error) {
+        console.error('Update Coupon Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating coupon',
+            error: error.message
+        });
+    }
+};
+
+export const deleteCoupon = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the coupon by ID
+        const coupon = await Coupon.findById(id);
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: 'Coupon not found'
+            });
+        }
+
+        // Delete the coupon
+        await Coupon.findByIdAndDelete(id);
+
+        res.status(200).json({
+            success: true,
+            message: 'Coupon deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete Coupon Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting coupon',
             error: error.message
         });
     }
