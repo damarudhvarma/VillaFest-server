@@ -52,15 +52,14 @@ const refundSchema = new mongoose.Schema({
     },
     referenceId: {
         type: String,
-        sparse: true,
-        index: true
+        sparse: true
     }
 }, {
     timestamps: true
 });
 
-// Remove any existing indexes on referenceId
-refundSchema.index({ referenceId: 1 }, { sparse: true, unique: false });
+// Create a sparse index on referenceId
+refundSchema.index({ referenceId: 1 }, { sparse: true });
 
 const Refund = mongoose.model('Refund', refundSchema);
 
