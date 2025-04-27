@@ -169,3 +169,59 @@ export const deleteCoupon = async (req, res) => {
         });
     }
 }; 
+
+export const applyCoupon = async (req, res) => {
+    try {
+        const { couponCode } = req.body;
+
+        // Find the coupon by code
+        const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: 'Coupon not found'
+            });
+        }
+
+        // Check if coupon is currently valid
+        const now = new Date();
+        const isValid =
+            coupon.isActive &&
+            now >= coupon.validFrom &&
+            now <= coupon.validUntil 
+
+        // if (!isValid) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: 'Coupon is not valid'
+        //     });
+        // }
+
+    
+        
+
+        // Calculate the discount amount
+        const discountAmount = (coupon.discountPercentage / 100) * req.body.totalAmount;
+        const finalAmount = req.body.totalAmount - discountAmount;
+        
+
+       
+      
+
+        // Return the discount amount
+        res.status(200).json({
+            success: true,
+            message: 'Coupon applied successfully',
+            data: finalAmount
+        }); 
+    } catch (error) {
+        console.error('Apply Coupon Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error applying coupon',
+            error: error.message
+        });
+    }
+};
+
