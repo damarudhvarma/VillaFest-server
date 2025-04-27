@@ -14,7 +14,7 @@ const bookingSchema = new mongoose.Schema({
     host: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Host',
-        
+
     },
     checkIn: {
         type: Date,
@@ -52,6 +52,25 @@ const bookingSchema = new mongoose.Schema({
             type: Date,
             default: null
         }
+    },
+    couponDetails: {
+        code: {
+            type: String,
+            default: null
+        },
+        discount: {
+            type: Number,
+            default: 0
+        },
+        originalPrice: {
+            type: Number,
+            default: 0
+        }
+    },
+    nights: {
+        type: Number,
+        required: [true, 'Number of nights is required'],
+        min: 1
     }
 }, {
     timestamps: true

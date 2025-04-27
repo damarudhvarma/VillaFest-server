@@ -119,7 +119,10 @@ export const createOrder = async (req, res) => {
                 userId,
                 checkInDate: bookingDetails.checkInDate,
                 checkOutDate: bookingDetails.checkOutDate,
-                guests: bookingDetails.guests
+                guests: bookingDetails.guests,
+                nights: bookingDetails.nights,
+                couponCode: bookingDetails.couponApplied?.code || null,
+                couponDiscount: bookingDetails.couponApplied?.discount || 0
             }
         };
 
@@ -193,22 +196,29 @@ export const verifyPayment = async (req, res) => {
         const checkInDate = new Date(bookingDetails.checkInDate);
         const checkOutDate = new Date(bookingDetails.checkOutDate);
 
-        // Create booking with host ID from property
+        // Create booking with host ID from property and coupon details
         const booking = new Booking({
             property: propertyId,
             user: userId,
-            host: property.host, // Add the host ID from the property
+            host: property.host,
             checkIn: checkInDate,
             checkOut: checkOutDate,
             totalPrice: bookingDetails.totalPrice,
             numberOfGuests: bookingDetails.guests,
+            nights: bookingDetails.nights,
             status: 'confirmed',
             paymentStatus: 'paid',
             paymentDetails: {
                 orderId: razorpay_order_id,
                 paymentId: razorpay_payment_id,
-                signature: razorpay_signature
-            }
+                signature: razorpay_signature,
+                paymentDate: new Date()
+            },
+            couponDetails: bookingDetails.couponApplied ? {
+                code: bookingDetails.couponApplied.code,
+                discount: bookingDetails.couponApplied.discount,
+                originalPrice: bookingDetails.totalPrice + bookingDetails.couponApplied.discount
+            } : null
         });
 
         // Save the booking
