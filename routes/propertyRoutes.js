@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { isAdmin, verifyToken } from "../middlewares/authMiddleware.js";
-import { createPropertyController, getAllPropertiesController, getPropertyByIdController } from "../controllers/propertyController.js";
+import { createPropertyController, getAllPropertiesController, getPropertyByIdController, searchPropertiesController } from "../controllers/propertyController.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -63,6 +63,6 @@ propertyRouter.post('/add-property',
 
 propertyRouter.get('/get-properties', getAllPropertiesController);
 propertyRouter.get('/get-properties/:id', getPropertyByIdController);
-
+propertyRouter.post('/search-properties', searchPropertiesController);
 
 export default propertyRouter;

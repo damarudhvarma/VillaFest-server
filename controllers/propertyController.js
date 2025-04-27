@@ -1,8 +1,7 @@
 import Property from '../models/propertyModel.js';
 import Category from '../models/Category.js';
 import Amenity from '../models/amenityModel.js';
-import mongoose from 'mongoose';
-import path from 'path';
+
 
 export const createPropertyController = async (req, res) => {
     try {
@@ -172,6 +171,75 @@ export const getPropertyByIdController = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error fetching property",
+            error: error.message
+        });
+    }
+};
+
+export const searchPropertiesController = async (req, res) => {
+    try {
+        const {
+            checkInDate,
+            checkOutDate,
+            guests,
+            minPrice,
+            maxPrice
+        } = req.body;
+
+        // Convert dates to Date objects
+        const checkIn = new Date(checkInDate);
+        const checkOut = new Date(checkOutDate);
+
+        // Validate dates
+        if (checkIn >= checkOut) {
+            return res.status(400).json({
+                success: false,
+                message: "Check-out date must be after check-in date"
+            });
+        }
+
+        // Find properties that match the criteria
+        const properties = await Property.find({
+            maxGuests: { $gte: guests },
+            price: { $gte: minPrice, $lte: maxPrice },
+            isActive: true,
+            $or: [
+                // Properties with no bookings
+                { bookedDates: { $size: 0 } },
+                // Properties with bookings that don't overlap with requested dates
+                {
+                    bookedDates: {
+                        $not: {
+                            $elemMatch: {
+                                $or: [
+                                    // Check if any booking overlaps with the requested dates
+                                    {
+                                        checkIn: { $lte: checkOut },
+                                        checkOut: { $gte: checkIn }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]
+        })
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon iconUrl')
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: "Properties fetched successfully",
+            properties,
+            total: properties.length
+        });
+
+    } catch (error) {
+        console.error("Error searching properties:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error searching properties",
             error: error.message
         });
     }
