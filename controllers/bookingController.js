@@ -27,34 +27,46 @@ export const getBookings = async (req, res) => {
             .sort({ createdAt: -1 }); // Sort by newest first
 
         // Transform the response to match the desired format
-        const formattedBookings = bookings.map(booking => ({
-            id: booking._id,
-            bookingDate: {
-                checkIn: booking.checkIn,
-                checkOut: booking.checkOut
-            },
-            propertyDetails: {
+        const formattedBookings = bookings.map(booking => {
+            // Create a safe property details object
+            const propertyDetails = booking.property ? {
                 id: booking.property._id,
                 title: booking.property.title,
-                images: [booking.property.mainImage, ...booking.property.additionalImages],
+                images: [
+                    booking.property.mainImage,
+                    ...(booking.property.additionalImages || [])
+                ],
                 location: booking.property.location
-            },
-            hostDetails: {
+            } : null;
+
+            // Create a safe host details object
+            const hostDetails = booking.host ? {
                 id: booking.host._id,
                 name: booking.host.fullName,
                 email: booking.host.email,
                 phoneNumber: booking.host.phoneNumber
-            },
-            paymentStatus: booking.paymentStatus,
-            status: booking.status,
-            amountPaid: booking.totalPrice
-        }));
+            } : null;
+
+            return {
+                id: booking._id,
+                bookingDate: {
+                    checkIn: booking.checkIn,
+                    checkOut: booking.checkOut
+                },
+                propertyDetails,
+                hostDetails,
+                paymentStatus: booking.paymentStatus,
+                status: booking.status,
+                amountPaid: booking.totalPrice
+            };
+        });
 
         res.status(200).json({
             success: true,
             data: formattedBookings
         });
     } catch (error) {
+        console.error('Get Bookings Error:', error);
         res.status(500).json({
             success: false,
             message: 'Error in fetching bookings',
