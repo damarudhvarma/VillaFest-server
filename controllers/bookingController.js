@@ -94,36 +94,47 @@ export const getAllBookings = async (req, res) => {
             .sort({ createdAt: -1 }); // Sort by newest first
 
         // Format the response
-        const formattedBookings = bookings.map(booking => ({
-            id: booking._id,
-            bookingDate: {
-                checkIn: booking.checkIn,
-                checkOut: booking.checkOut
-            },
-            propertyDetails: {
+        const formattedBookings = bookings.map(booking => {
+            // Create property details with null check
+            const propertyDetails = booking.property ? {
                 id: booking.property._id,
                 title: booking.property.title,
-                images: [booking.property.mainImage, ...booking.property.additionalImages],
+                images: [booking.property.mainImage, ...(booking.property.additionalImages || [])],
                 location: booking.property.location
-            },
-            userDetails: {
+            } : null;
+
+            // Create user details with null check
+            const userDetails = booking.user ? {
                 id: booking.user._id,
                 name: `${booking.user.firstName} ${booking.user.lastName}`,
                 email: booking.user.email,
                 mobileNumber: booking.user.mobileNumber
-            },
-            hostDetails: {
+            } : null;
+
+            // Create host details with null check
+            const hostDetails = booking.host ? {
                 id: booking.host._id,
                 name: booking.host.fullName,
                 email: booking.host.email,
                 phoneNumber: booking.host.phoneNumber
-            },
-            numberOfGuests: booking.numberOfGuests,
-            totalPrice: booking.totalPrice,
-            status: booking.status,
-            paymentStatus: booking.paymentStatus,
-            createdAt: booking.createdAt
-        }));
+            } : null;
+
+            return {
+                id: booking._id,
+                bookingDate: {
+                    checkIn: booking.checkIn,
+                    checkOut: booking.checkOut
+                },
+                propertyDetails,
+                userDetails,
+                hostDetails,
+                numberOfGuests: booking.numberOfGuests,
+                totalPrice: booking.totalPrice,
+                status: booking.status,
+                paymentStatus: booking.paymentStatus,
+                createdAt: booking.createdAt
+            };
+        });
 
         res.status(200).json({
             success: true,
@@ -292,24 +303,30 @@ export const getHostPropertyBookings = async (req, res) => {
             // Calculate the host's share (89% of total price)
             const hostShare = booking.totalPrice * 0.89;
 
+            // Create property details with null check
+            const propertyDetails = booking.property ? {
+                id: booking.property._id,
+                title: booking.property.title,
+                images: [booking.property.mainImage, ...(booking.property.additionalImages || [])],
+                location: booking.property.location
+            } : null;
+
+            // Create user details with null check
+            const userDetails = booking.user ? {
+                id: booking.user._id,
+                name: `${booking.user.firstName} ${booking.user.lastName}`,
+                email: booking.user.email,
+                mobileNumber: booking.user.mobileNumber
+            } : null;
+
             return {
                 id: booking._id,
                 bookingDate: {
                     checkIn: booking.checkIn,
                     checkOut: booking.checkOut
                 },
-                propertyDetails: {
-                    id: booking.property._id,
-                    title: booking.property.title,
-                    images: [booking.property.mainImage, ...booking.property.additionalImages],
-                    location: booking.property.location
-                },
-                userDetails: {
-                    id: booking.user._id,
-                    name: `${booking.user.firstName} ${booking.user.lastName}`,
-                    email: booking.user.email,
-                    mobileNumber: booking.user.mobileNumber
-                },
+                propertyDetails,
+                userDetails,
                 numberOfGuests: booking.numberOfGuests,
                 yourShare: hostShare, // Use the reduced price (89% of original)
                 // Keep the original price for reference
