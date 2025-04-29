@@ -191,12 +191,12 @@ export const applyCoupon = async (req, res) => {
             now >= coupon.validFrom &&
             now <= coupon.validUntil 
 
-        // if (!isValid) {
-        //     return res.status(400).json({
-        //         success: false,
-        //         message: 'Coupon is not valid'
-        //     });
-        // }
+        if (!isValid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Coupon is not valid'
+            });
+        }
 
     
         
