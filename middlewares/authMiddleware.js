@@ -72,9 +72,8 @@ export const authenticateHost = async (req, res, next) => {
     try {
         // Get token from header
         const authHeader = req.headers.authorization;
-       
 
-        const token = authHeader.split(' ')[1];
+        const token = authHeader?.split(' ')[1];
 
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
