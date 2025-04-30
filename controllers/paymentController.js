@@ -63,7 +63,7 @@ const isPropertyAvailable = async (propertyId, checkIn, checkOut) => {
  */
 export const createOrder = async (req, res) => {
     try {
-        const { amount, propertyId, userId, bookingDetails } = req.body;
+        const { amount, propertyId, userId, bookingDetails, userName, propertyTitle } = req.body;
 
         // Validate required fields
         if (!amount || !propertyId || !userId || !bookingDetails) {
@@ -115,8 +115,8 @@ export const createOrder = async (req, res) => {
             currency: "INR",
             receipt: `booking_${Date.now()}`,
             notes: {
-                propertyId,
-                userId,
+                userName, 
+                propertyTitle,
                 checkInDate: bookingDetails.checkInDate,
                 checkOutDate: bookingDetails.checkOutDate,
                 guests: bookingDetails.guests,
@@ -156,7 +156,9 @@ export const verifyPayment = async (req, res) => {
             razorpay_signature,
             propertyId,
             userId,
-            bookingDetails
+            bookingDetails,
+            userName,
+            propertyTitle
         } = req.body;
 
         // Validate required fields
