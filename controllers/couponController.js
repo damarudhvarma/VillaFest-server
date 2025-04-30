@@ -1,4 +1,5 @@
 import Coupon from '../models/couponModel.js';
+import HostCoupon from '../models/hostCouponModel.js';
 
 export const createCoupon = async (req, res) => {
     try {
@@ -168,14 +169,29 @@ export const deleteCoupon = async (req, res) => {
             error: error.message
         });
     }
-}; 
+};
 
 export const applyCoupon = async (req, res) => {
     try {
-        const { couponCode } = req.body;
+        const { couponCode, propertyId, totalAmount } = req.body;
 
-        // Find the coupon by code
-        const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+        // First try to find the coupon in regular Coupon collection
+        let coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+
+        // If not found in regular coupons, try host coupons
+        if (!coupon) {
+            coupon = await HostCoupon.findOne({ code: couponCode.toUpperCase() });
+
+            if (coupon) {
+                // For host coupons, verify if it's valid for the specified property
+                if (coupon.property.toString() !== propertyId) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'This coupon is not valid for the selected property'
+                    });
+                }
+            }
+        }
 
         if (!coupon) {
             return res.status(404).json({
@@ -189,7 +205,7 @@ export const applyCoupon = async (req, res) => {
         const isValid =
             coupon.isActive &&
             now >= coupon.validFrom &&
-            now <= coupon.validUntil 
+            now <= coupon.validUntil;
 
         if (!isValid) {
             return res.status(400).json({
@@ -198,23 +214,16 @@ export const applyCoupon = async (req, res) => {
             });
         }
 
-    
-        
-
         // Calculate the discount amount
-        const discountAmount = (coupon.discountPercentage / 100) * req.body.totalAmount;
-        const finalAmount = req.body.totalAmount - discountAmount;
-        
-
-       
-      
+        const discountAmount = (coupon.discountPercentage / 100) * totalAmount;
+        const finalAmount = totalAmount - discountAmount;
 
         // Return the discount amount
         res.status(200).json({
             success: true,
             message: 'Coupon applied successfully',
             data: finalAmount
-        }); 
+        });
     } catch (error) {
         console.error('Apply Coupon Error:', error);
         res.status(500).json({
