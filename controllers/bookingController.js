@@ -132,6 +132,10 @@ export const getAllBookings = async (req, res) => {
                 totalPrice: booking.totalPrice,
                 status: booking.status,
                 paymentStatus: booking.paymentStatus,
+                paymentDetails: {
+                    paymentId: booking.paymentDetails?.paymentId || null,
+                    orderId: booking.paymentDetails?.orderId || null
+                },
                 createdAt: booking.createdAt
             };
         });
