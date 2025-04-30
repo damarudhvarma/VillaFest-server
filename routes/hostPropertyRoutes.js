@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateHost } from '../middlewares/authMiddleware.js';
-import { createHostPropertyController, getAllHostPropertiesController, getHostPropertiesController, approveHostPropertyController, rejectHostPropertyController } from '../controllers/host-propertyController.js';
+import { createHostPropertyController, getAllHostPropertiesController, getHostPropertiesController, approveHostPropertyController, rejectHostPropertyController, getHostPropertyByIdController } from '../controllers/host-propertyController.js';
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -65,5 +65,6 @@ hostPropertyRouter.get('/all', getAllHostPropertiesController);
 // Add new routes for approve and reject
 hostPropertyRouter.patch('/:id/approve', approveHostPropertyController);
 hostPropertyRouter.patch('/:id/reject', rejectHostPropertyController);
+hostPropertyRouter.get('/get-host-property-by-id', authenticateHost, getHostPropertyByIdController);
 
 export default hostPropertyRouter;
