@@ -292,3 +292,32 @@ export const rejectHostPropertyController = async (req, res) => {
     }
 };
 
+export const getHostPropertyByIdController = async (req, res) => {
+    try {
+        // Convert Buffer to string if it's a Buffer
+        const hostId = req.hostData._id instanceof Buffer
+            ? req.hostData._id.toString('hex')
+            : req.hostData._id;
+        const hostProperty = await Property.findOne({ host: hostId })
+            
+
+        if (!hostProperty) {
+            return res.status(404).json({
+                success: false,
+                message: "Host property not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: hostProperty
+        });
+    } catch (error) {
+        console.error("Error getting host property by id:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error getting host property by id",
+            error: error.message
+        });
+    }
+}
