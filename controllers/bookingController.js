@@ -245,8 +245,19 @@ export const cancelBooking = async (req, res) => {
             booking.paymentStatus = 'not eligible for refund';
         }
 
-        // Update booking status
+        // Update booking status while preserving payment details
         booking.status = 'cancelled';
+
+        // Ensure payment details are preserved
+        if (!booking.paymentDetails) {
+            booking.paymentDetails = {};
+        }
+
+        // Preserve the original payment method
+        if (!booking.paymentDetails.paymentMethod) {
+            booking.paymentDetails.paymentMethod = 'razorpay'; // Default to razorpay if not set
+        }
+
         await booking.save();
 
         // Update property's bookedDates array to remove this booking

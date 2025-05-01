@@ -51,6 +51,10 @@ const bookingSchema = new mongoose.Schema({
         paymentDate: {
             type: Date,
             default: null
+        },
+        paymentMethod: {
+            type: String,
+            required: true
         }
     },
     couponDetails: {
