@@ -81,6 +81,9 @@ export const createOrder = async (req, res) => {
             });
         }
 
+        // Convert amount to paise (integer)
+        const amountInPaise = Math.round(amount * 100);
+
         // Convert string dates to Date objects
         const checkInDate = new Date(bookingDetails.checkInDate);
         const checkOutDate = new Date(bookingDetails.checkOutDate);
@@ -111,14 +114,22 @@ export const createOrder = async (req, res) => {
 
         // Create Razorpay order
         const options = {
-            amount: amount * 100, // Razorpay expects amount in paise
+            amount: amountInPaise, // Use the converted amount in paise
             currency: "INR",
             receipt: `booking_${Date.now()}`,
             notes: {
-                userName, 
+                userName,
                 propertyTitle,
-                checkInDate: bookingDetails.checkInDate,
-                checkOutDate: bookingDetails.checkOutDate,
+                checkInDate: new Date(bookingDetails.checkInDate).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit'
+                }),
+                checkOutDate: new Date(bookingDetails.checkOutDate).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit'
+                }),
                 guests: bookingDetails.guests,
                 nights: bookingDetails.nights,
                 couponCode: bookingDetails.couponApplied?.code || null,
@@ -185,6 +196,21 @@ export const verifyPayment = async (req, res) => {
             });
         }
 
+        // Fetch payment details from Razorpay API
+        const paymentResponse = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Basic ' + Buffer.from(process.env.RAZORPAY_KEY_ID + ':' + process.env.RAZORPAY_KEY_SECRET).toString('base64')
+            }
+        });
+
+        if (!paymentResponse.ok) {
+            throw new Error('Failed to fetch payment details from Razorpay');
+        }
+
+        const paymentDetails = await paymentResponse.json();
+        const paymentMethod = paymentDetails.method;
+
         // Find the property
         const property = await Property.findById(propertyId);
         if (!property) {
@@ -214,7 +240,8 @@ export const verifyPayment = async (req, res) => {
                 orderId: razorpay_order_id,
                 paymentId: razorpay_payment_id,
                 signature: razorpay_signature,
-                paymentDate: new Date()
+                paymentDate: new Date(),
+                paymentMethod: paymentMethod
             },
             couponDetails: bookingDetails.couponApplied ? {
                 code: bookingDetails.couponApplied.code,
