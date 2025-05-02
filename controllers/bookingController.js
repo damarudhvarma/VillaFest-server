@@ -3,6 +3,10 @@ import Property from '../models/propertyModel.js';
 import Refund from '../models/refundsModel.js';
 import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
@@ -10,6 +14,9 @@ const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET
 });
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const getBookings = async (req, res) => {
     try {
@@ -366,3 +373,138 @@ export const getHostPropertyBookings = async (req, res) => {
     }
 };
 
+export const generateInvoice = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        console.log(bookingId);
+
+        // Find the booking
+        const booking = await Booking.findById(bookingId)
+            .populate('user', 'firstName lastName email mobileNumber')
+            .populate('property', 'title');
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
+        }
+
+        // Get the current year
+        const currentYear = new Date().getFullYear();
+
+        // Get the serial number for the invoice
+        const totalBookings = await Booking.countDocuments({
+            createdAt: {
+                $gte: new Date(currentYear, 0, 1),
+                $lt: new Date(currentYear + 1, 0, 1)
+            }
+        });
+
+        // Generate invoice number
+        const invoiceNumber = `VF/${currentYear}/${String(totalBookings + 1).padStart(4, '0')}`;
+        // Create a safe filename by replacing slashes with underscores
+        const safeFilename = `invoice_VF_${currentYear}_${String(totalBookings + 1).padStart(4, '0')}.pdf`;
+
+        // Generate booking reference from payment ID
+        const bookingRef = `VF-${booking.paymentDetails.paymentId.split('_')[1]}`;
+
+        // Format the booking date
+        const invoiceDate = booking.createdAt.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+
+        // Load the template
+        const templatePath = path.join(process.cwd(), 'public', 'letterhead_template.pdf');
+
+        // Check if template file exists
+        if (!fs.existsSync(templatePath)) {
+            return res.status(500).json({
+                success: false,
+                message: 'Invoice template not found',
+                error: 'Template file does not exist'
+            });
+        }
+
+        // Read template file
+        const templateBytes = fs.readFileSync(templatePath);
+        const pdfDoc = await PDFDocument.load(templateBytes);
+
+        // Get the first page of the template
+        const pages = pdfDoc.getPages();
+        const page = pages[0];
+
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+        // Text Config
+        const textOptions = { size: 12, color: rgb(0, 0, 0) };
+
+        // --- ISSUED TO ---
+        page.drawText('ISSUED TO:', { x: 50, y: 705, font, size: 11, color: rgb(0, 0, 0) });
+        page.drawText(`${booking.user.firstName} ${booking.user.lastName}`, { x: 50, y: 690, font: boldFont, size: 12, color: rgb(0, 0, 0) });
+        page.drawText(`Phone: ${booking.user.mobileNumber}`, { x: 50, y: 675, font, size: 11, color: rgb(0, 0, 0) });
+        page.drawText(`Email: ${booking.user.email}`, { x: 50, y: 660, font, size: 11, color: rgb(0, 0, 0) });
+
+        // --- Invoice No and Date ---
+        page.drawText(`Invoice No: ${invoiceNumber}`, { x: 50, y: 625, font, size: 11, color: rgb(0, 0, 0) });
+        page.drawText(`Date: ${invoiceDate}`, { x: 200, y: 625, font, size: 11, color: rgb(0, 0, 0) });
+
+        // --- TABLE HEADER ---
+        page.drawRectangle({ x: 50, y: 590, width: 470, height: 25, color: rgb(0, 0.6, 0.36) });
+        page.drawText('DESCRIPTION', { x: 55, y: 597, font: boldFont, size: 11, color: rgb(1, 1, 1) });
+        page.drawText('UNIT PRICE', { x: 270, y: 597, font: boldFont, size: 11, color: rgb(1, 1, 1) });
+        page.drawText('QTY', { x: 370, y: 597, font: boldFont, size: 11, color: rgb(1, 1, 1) });
+        page.drawText('TOTAL', { x: 430, y: 597, font: boldFont, size: 11, color: rgb(1, 1, 1) });
+
+        // --- TABLE ROW ---
+        page.drawRectangle({ x: 50, y: 565, width: 470, height: 25, color: rgb(1, 1, 1) });
+        page.drawText(booking.property.title, { x: 55, y: 572, font, size: 11, color: rgb(0, 0, 0) });
+        page.drawText(booking.totalPrice.toLocaleString('en-IN'), { x: 270, y: 572, font, size: 11, color: rgb(0, 0, 0) });
+        page.drawText('1', { x: 380, y: 572, font, size: 11, color: rgb(0, 0, 0) });
+        page.drawText(booking.totalPrice.toLocaleString('en-IN'), { x: 430, y: 572, font, size: 11, color: rgb(0, 0, 0) });
+
+        // --- SUBTOTAL, TAX, TOTAL ---
+        page.drawText('SUBTOTAL', { x: 55, y: 535, font: boldFont, size: 12, color: rgb(0, 0, 0) });
+        page.drawText(booking.totalPrice.toLocaleString('en-IN'), { x: 430, y: 535, font: boldFont, size: 12, color: rgb(0, 0, 0) });
+        page.drawText('Tax', { x: 55, y: 515, font, size: 12, color: rgb(0, 0, 0) });
+        page.drawText('Included', { x: 430, y: 515, font, size: 12, color: rgb(0, 0, 0) });
+        page.drawText('TOTAL', { x: 55, y: 495, font: boldFont, size: 12, color: rgb(0, 0, 0) });
+        page.drawText(booking.totalPrice.toLocaleString('en-IN'), { x: 430, y: 495, font: boldFont, size: 12, color: rgb(0, 0, 0) });
+
+        // --- BANK DETAILS ---
+        page.drawText('BANK DETAILS:', { x: 55, y: 465, font: boldFont, size: 11, color: rgb(0, 0, 0) });
+        page.drawText(`Payment Mode: ${booking.paymentDetails.paymentMethod.toUpperCase()}`, { x: 55, y: 450, font, size: 10, color: rgb(0, 0, 0) });
+        page.drawText(`Booking Reference: ${bookingRef}`, { x: 55, y: 437, font, size: 10, color: rgb(0, 0, 0) });
+
+        // --- NOTES ---
+        page.drawText('NOTES:', { x: 55, y: 400, font: boldFont, size: 11, color: rgb(0, 0, 0) });
+        page.drawText('- Villafest is a platform that facilitates villa bookings.', { x: 55, y: 387, font, size: 10, color: rgb(0, 0, 0) });
+        page.drawText('- This invoice serves as a receipt for your payment.', { x: 55, y: 374, font, size: 10, color: rgb(0, 0, 0) });
+        page.drawText('- The actual service is delivered by a third-party villa partner.', { x: 55, y: 361, font, size: 10, color: rgb(0, 0, 0) });
+        page.drawText('- Cancellation/Refund Policy: Please refer to Villafest.in.', { x: 55, y: 348, font, size: 10, color: rgb(0, 0, 0) });
+        page.drawText('- For any assistance, contact: info@villafest.in', { x: 55, y: 335, font, size: 10, color: rgb(0, 0, 0) });
+
+       
+        const pdfBytes = await pdfDoc.save();
+
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${safeFilename}`);
+
+        // Send the PDF
+        res.end(Buffer.from(pdfBytes));
+        
+
+    } catch (error) {
+        console.error('Generate Invoice Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error generating invoice',
+            error: error.message
+        });
+    }
+};
