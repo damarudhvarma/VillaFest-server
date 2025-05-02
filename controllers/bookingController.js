@@ -393,18 +393,16 @@ export const generateInvoice = async (req, res) => {
         // Get the current year
         const currentYear = new Date().getFullYear();
 
-        // Get the serial number for the invoice
-        const totalBookings = await Booking.countDocuments({
-            createdAt: {
-                $gte: new Date(currentYear, 0, 1),
-                $lt: new Date(currentYear + 1, 0, 1)
-            }
-        });
+        // Get the total number of bookings and the position of this booking
+        const totalBookings = await Booking.countDocuments();
+        const bookingPosition = await Booking.countDocuments({
+            createdAt: { $lt: booking.createdAt }
+        }) + 1;
 
-        // Generate invoice number
-        const invoiceNumber = `VF/${currentYear}/${String(totalBookings + 1).padStart(4, '0')}`;
+        // Generate invoice number using the booking's position
+        const invoiceNumber = `VF/${currentYear}/${String(bookingPosition).padStart(4, '0')}`;
         // Create a safe filename by replacing slashes with underscores
-        const safeFilename = `invoice_VF_${currentYear}_${String(totalBookings + 1).padStart(4, '0')}.pdf`;
+        const safeFilename = `invoice_VF_${currentYear}_${String(bookingPosition).padStart(4, '0')}.pdf`;
 
         // Generate booking reference from payment ID
         const bookingRef = `VF-${booking.paymentDetails.paymentId.split('_')[1]}`;
@@ -487,7 +485,7 @@ export const generateInvoice = async (req, res) => {
         page.drawText('- Cancellation/Refund Policy: Please refer to Villafest.in.', { x: 55, y: 348, font, size: 10, color: rgb(0, 0, 0) });
         page.drawText('- For any assistance, contact: info@villafest.in', { x: 55, y: 335, font, size: 10, color: rgb(0, 0, 0) });
 
-       
+
         const pdfBytes = await pdfDoc.save();
 
 
@@ -497,7 +495,7 @@ export const generateInvoice = async (req, res) => {
 
         // Send the PDF
         res.end(Buffer.from(pdfBytes));
-        
+
 
     } catch (error) {
         console.error('Generate Invoice Error:', error);
