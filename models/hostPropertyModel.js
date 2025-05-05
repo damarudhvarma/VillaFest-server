@@ -98,7 +98,11 @@ const hostPropertySchema = new mongoose.Schema({
         required: true,
         min: 1
     },
-    
+    rooms: {
+        type: Number,
+        required: true,
+        min: 1
+    },
     host: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Host',
@@ -109,17 +113,17 @@ const hostPropertySchema = new mongoose.Schema({
         enum: ['pending', 'approved', 'rejected'],
         default: 'pending'
     },
-    
+
     isActive: {
         type: Boolean,
         default: false
     },
- 
-    
+
+
     availability: [{
         date: {
             type: Date,
-            
+
         },
         isAvailable: {
             type: Boolean,

@@ -103,6 +103,11 @@ const propertySchema = new mongoose.Schema({
         required: true,
         min: 1
     },
+    rooms: {
+        type: Number,
+        required: true,
+        min: 1
+    },
     isActive: {
         type: Boolean,
         default: true
