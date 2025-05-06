@@ -183,7 +183,8 @@ export const searchPropertiesController = async (req, res) => {
             checkOutDate,
             guests,
             minPrice,
-            maxPrice
+            maxPrice,
+            location // city name
         } = req.body;
 
         // Convert dates to Date objects
@@ -198,8 +199,8 @@ export const searchPropertiesController = async (req, res) => {
             });
         }
 
-        // Find properties that match the criteria
-        const properties = await Property.find({
+        // Build the query object
+        const query = {
             maxGuests: { $gte: guests },
             price: { $gte: minPrice, $lte: maxPrice },
             isActive: true,
@@ -223,7 +224,15 @@ export const searchPropertiesController = async (req, res) => {
                     }
                 }
             ]
-        })
+        };
+
+        // Add city filter if location is provided
+        if (location) {
+            query['address.city'] = { $regex: new RegExp(location, 'i') }; // Case-insensitive search
+        }
+
+        // Find properties that match the criteria
+        const properties = await Property.find(query)
             .populate('category', 'name image')
             .populate('amenities', 'name icon iconUrl')
             .sort({ createdAt: -1 });
@@ -240,6 +249,30 @@ export const searchPropertiesController = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error searching properties",
+            error: error.message
+        });
+    }
+};
+
+export const getCitiesController = async (req, res) => {
+    try {
+        // Find all properties and get unique cities
+        const properties = await Property.find({}, 'address.city');
+
+        // Extract unique cities and sort them
+        const cities = [...new Set(properties.map(property => property.address.city))].sort();
+
+        return res.status(200).json({
+            success: true,
+            message: "Cities fetched successfully",
+            cities
+        });
+
+    } catch (error) {
+        console.error("Error fetching cities:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching cities",
             error: error.message
         });
     }
