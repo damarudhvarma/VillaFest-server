@@ -8,6 +8,7 @@ import {
     getHostsController,
     approveHostController,
     rejectHostController,
+    firebaseRegisterController,
 
 } from '../controllers/hostController.js';
 
@@ -85,5 +86,6 @@ hostRouter.delete('/:hostId/reject', verifyToken, isAdmin, rejectHostController)
 hostRouter.get('/profile', authenticateHost, getHostProfileController);
 
 hostRouter.put('/change-password', authenticateHost, changePasswordController);
+hostRouter.post('/firebase-register',upload.array('propertyPhotos', 10), firebaseRegisterController);
 
 export default hostRouter;

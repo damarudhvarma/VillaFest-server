@@ -2,6 +2,7 @@ import Host from '../models/hostModel.js';
 import { validationResult } from 'express-validator';
 import path from 'path';
 import fs from 'fs';
+import admin from '../firebaseAdmin.js';
 
 // Create new host
 export const createHostController = async (req, res) => {
@@ -48,7 +49,7 @@ export const createHostController = async (req, res) => {
         }
 
         // Check if host already exists
-        const existingHost = await Host.findOne({ email: req.body.hostEmail });
+        const existingHost = await Host.findOne({ email: req.body.email });
         if (existingHost) {
             return res.status(400).json({
                 success: false,
@@ -59,7 +60,8 @@ export const createHostController = async (req, res) => {
         // Create new host
         const host = new Host({
             fullName: req.body.hostName,
-            email: req.body.hostEmail,
+            email: req.body.email,
+            password: req.body.password,
             phoneNumber: req.body.hostPhone,
             bankingDetails: {
                 accountHolderName: bankDetails.accountHolder,
@@ -73,12 +75,15 @@ export const createHostController = async (req, res) => {
                     city: req.body.city,
                     state: req.body.state,
                     postalCode: req.body.zipCode,
-                    country: req.body.country
+                    country: req.body.country,
+                    latitude: req.body.latitude || null,
+                    longitude: req.body.longitude || null
                 },
                 amenities: amenities,
                 propertyRules: propertyRules,
                 propertyDetails: {
                     title: req.body.propertyTitle,
+                    numberOfRooms: req.body.numberOfRooms,
                     regularPrice: req.body.regularPrice,
                     weekendPrice: req.body.weekendPrice,
                     guestLimit: req.body.maxGuests,
@@ -95,6 +100,7 @@ export const createHostController = async (req, res) => {
 
         // Remove password from response
         const hostResponse = host.toObject();
+        delete hostResponse.password;
 
         res.status(201).json({
             success: true,
@@ -373,6 +379,126 @@ export const rejectHostController = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error rejecting host',
+            error: error.message
+        });
+    }
+};
+
+export const firebaseRegisterController = async (req, res) => {
+    try {
+        // Process uploaded photos
+        let photoPaths = [];
+        if (req.files && req.files.length > 0) {
+            // Use the relative directory path stored in the request
+            const relativeDir = req.relativeUploadDir || 'host-enquiry';
+            photoPaths = req.files.map(file => `/${relativeDir}/${path.basename(file.filename)}`);
+        }
+
+        // Parse bank details if it's a string
+        let bankDetails = req.body.bankDetails;
+        if (typeof bankDetails === 'string') {
+            try {
+                bankDetails = JSON.parse(bankDetails);
+            } catch (error) {
+                console.error('Error parsing bank details:', error);
+                bankDetails = {};
+            }
+        }
+
+        // Parse amenities and property rules if they're strings
+        let amenities = req.body.amenities;
+        let propertyRules = req.body.propertyRules;
+
+        if (typeof amenities === 'string') {
+            try {
+                amenities = JSON.parse(amenities);
+            } catch (error) {
+                console.error('Error parsing amenities:', error);
+                amenities = [];
+            }
+        }
+
+        if (typeof propertyRules === 'string') {
+            try {
+                propertyRules = JSON.parse(propertyRules);
+            } catch (error) {
+                console.error('Error parsing property rules:', error);
+                propertyRules = [];
+            }
+        }
+
+        // Verify and decode the Firebase ID token
+        const decodedToken = await admin.auth().verifyIdToken(req.body.idToken);
+        const email = decodedToken.email;
+        const uid = decodedToken.uid;
+
+        // Check if host already exists
+        const existingHost = await Host.findOne({ email });
+        if (existingHost) {
+            return res.status(400).json({
+                success: false,
+                message: 'Host with this email already exists'
+            });
+        }
+
+        // Create new host
+        const host = new Host({
+            fullName: req.body.hostName,
+            email: email, // Using email from decoded token
+            password: uid, // Using Firebase UID as password
+            phoneNumber: req.body.hostPhone,
+            bankingDetails: {
+                accountHolderName: bankDetails.accountHolder,
+                accountNumber: bankDetails.accountNumber,
+                bankName: bankDetails.bankName,
+                ifscCode: bankDetails.ifscCode
+            },
+            enquiry: {
+                locationDetails: {
+                    address: req.body.address,
+                    city: req.body.city,
+                    state: req.body.state,
+                    postalCode: req.body.zipCode,
+                    country: req.body.country,
+                    latitude: req.body.latitude || null,
+                    longitude: req.body.longitude || null
+                },
+                amenities: amenities,
+                propertyRules: propertyRules,
+                propertyDetails: {
+                    title: req.body.propertyTitle,
+                    numberOfRooms: req.body.numberOfRooms,
+                    regularPrice: req.body.regularPrice,
+                    weekendPrice: req.body.weekendPrice,
+                    guestLimit: req.body.maxGuests,
+                    description: req.body.description,
+                    photos: photoPaths
+                }
+            }
+        });
+
+        await host.save();
+
+        // Generate token
+        const authToken = host.generateAuthToken();
+
+        // Remove password from response
+        const hostResponse = host.toObject();
+        delete hostResponse.password;
+
+        res.status(201).json({
+            success: true,
+            message: 'Host registered successfully with Firebase',
+            data: {
+                host: hostResponse,
+                authToken
+            }
+        });
+    } catch (error) {
+        console.error('Error in firebaseRegisterController:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error in registering host with Firebase',
             error: error.message
         });
     }
