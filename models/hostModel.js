@@ -20,12 +20,8 @@ const hostSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        minlength: [8, 'Password must be at least 8 characters long'],
-        select: false, // This ensures password is not returned in queries by default
-        match: [
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-            'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
-        ]
+        required: [true, 'Password is required'],
+        minlength: [6, 'Password must be at least 6 characters long']
     },
     phoneNumber: {
         type: String,
@@ -101,6 +97,10 @@ const hostSchema = new mongoose.Schema({
             weekendPrice: {
                 type: Number,
                 min: 0
+            },
+            rooms: {
+                type: Number,
+                min: 1
             },
             guestLimit: {
                 type: Number,
