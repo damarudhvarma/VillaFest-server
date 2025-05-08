@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { isAdmin, verifyToken } from "../middlewares/authMiddleware.js";
-import { createCoupon, getAllCoupons, updateCoupon, deleteCoupon, applyCoupon } from "../controllers/couponController.js";
+import { createCoupon, getAllCoupons, updateCoupon, deleteCoupon, applyCoupon, getAll } from "../controllers/couponController.js";
 
 
 const couponRouter = Router();
@@ -10,6 +10,7 @@ couponRouter.get('/', verifyToken, getAllCoupons);
 couponRouter.put('/:id', verifyToken, isAdmin, updateCoupon);
 couponRouter.delete('/:id', verifyToken, isAdmin, deleteCoupon);
 couponRouter.post('/apply-coupon', verifyToken, applyCoupon);
+couponRouter.post('/get-all-coupons', getAll);
 
 
 

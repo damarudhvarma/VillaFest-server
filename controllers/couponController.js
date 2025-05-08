@@ -234,3 +234,62 @@ export const applyCoupon = async (req, res) => {
     }
 };
 
+export const getAll = async (req, res) => {
+    try {
+        // Fetch both regular coupons and host coupons
+        const [regularCoupons, hostCoupons] = await Promise.all([
+            Coupon.find().sort({ createdAt: -1 }),
+            HostCoupon.find()
+                .populate('property', 'title')
+                .populate('host', 'name')
+                .sort({ createdAt: -1 })
+        ]);
+
+        // Process regular coupons
+        const processedRegularCoupons = regularCoupons.map(coupon => {
+            const now = new Date();
+            const isValid =
+                coupon.isActive &&
+                now >= coupon.validFrom &&
+                now <= coupon.validUntil &&
+                (coupon.maxUsage === null || coupon.usageCount < coupon.maxUsage);
+
+            const couponObj = coupon.toObject();
+            couponObj.isCurrentlyValid = isValid;
+            couponObj.type = 'regular';
+            return couponObj;
+        });
+
+        // Process host coupons
+        const processedHostCoupons = hostCoupons.map(coupon => {
+            const now = new Date();
+            const isValid =
+                coupon.isActive &&
+                now >= coupon.validFrom &&
+                now <= coupon.validUntil;
+
+            const couponObj = coupon.toObject();
+            couponObj.isCurrentlyValid = isValid;
+            couponObj.type = 'host';
+            return couponObj;
+        });
+
+        // Combine both types of coupons
+        const allCoupons = [...processedRegularCoupons, ...processedHostCoupons];
+
+        res.status(200).json({
+            success: true,
+            count: allCoupons.length,
+            data: allCoupons
+        });
+
+    } catch (error) {
+        console.error('Get All Coupons Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching coupons',
+            error: error.message
+        });
+    }
+};
+
