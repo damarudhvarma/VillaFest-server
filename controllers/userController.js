@@ -1,6 +1,7 @@
 import User from '../models/userModel.js';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import Property from '../models/propertyModel.js';
+import admin from '../firebaseAdmin.js';
 
 export const registerUserController = async (req, res) => {
     const { firstName, lastName, mobileNumber, email, password } = req.body;
@@ -306,4 +307,105 @@ export const removeFromWishlistController = async (req, res) => {
             error: error.message
         });
     }
-};  
+};
+
+export const registerUserByFirebaseController = async (req, res) => {
+    try {
+        const { idToken, email, firstName, lastName, mobileNumber } = req.body;
+
+        if (!idToken || !email || !firstName || !lastName || !mobileNumber) {
+            return res.status(400).json({
+                success: false,
+                message: 'All fields are required: idToken, email, firstName, lastName, mobileNumber'
+            });
+        }
+
+        // Verify and decode the Firebase ID token
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+        // Check if user already exists
+        const existingUserEmail = await User.findOne({ email });
+        if (existingUserEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'User already exists with this email'
+            });
+        }
+
+        // Check if user exists with mobile number
+        const existingUserMobile = await User.findOne({ mobileNumber });
+        if (existingUserMobile) {
+            return res.status(400).json({
+                success: false,
+                message: 'User already exists with this mobile number'
+            });
+        }
+
+        // Create new user with Firebase UID as password
+        const user = new User({
+            firstName,
+            lastName,
+            mobileNumber,
+            email,
+            password: decodedToken.uid // Using Firebase UID as password
+        });
+
+        await user.save();
+
+        // Generate JWT token
+        const token = user.generateToken();
+
+        res.status(201).json({
+            success: true,
+            message: 'User registered successfully with Firebase',
+            data: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                mobileNumber: user.mobileNumber
+            },
+            token
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in registering user by firebase',
+            error: error.message
+        });
+    }
+}
+
+export const loginUserByFirebaseController = async (req, res) => {
+    try {
+        const { idToken } = req.body;
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const uid = decodedToken.uid;
+        const email = decodedToken.email;
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found' }); 
+        }
+
+        const isMatch = await user.comparePassword(uid);
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password'
+            });
+        }
+        const token = user.generateToken();
+        res.status(200).json({
+            success: true,
+            message: 'User logged in successfully with Firebase',
+            token
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in logging in user by firebase',
+            error: error.message
+        });
+    }
+}
+
