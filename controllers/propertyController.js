@@ -22,7 +22,8 @@ export const createPropertyController = async (req, res) => {
             state,
             postalCode,
             isActive,
-            maxGuests
+            maxGuests,
+            rooms
         } = req.body;
 
         // Parse the JSON strings
@@ -89,6 +90,7 @@ export const createPropertyController = async (req, res) => {
             },
             isActive,
             maxGuests: Number(maxGuests),
+            rooms: Number(rooms),
             mainImage: mainImagePath,
             additionalImages: additionalImagePaths
         });

@@ -22,6 +22,7 @@ export const createHostPropertyController = async (req, res) => {
             state,
             postalCode,
             maxGuests,
+            rooms,
             owner
         } = req.body;
 
@@ -82,7 +83,7 @@ export const createHostPropertyController = async (req, res) => {
             description,
             rules: parsedRules,
             amenities: selectedAmenities,
-            customAmenities: customAmenities, // Store custom amenities separately
+            customAmenities: customAmenities,
             location: {
                 type: 'Point',
                 coordinates: [Number(longitude), Number(latitude)]
@@ -98,10 +99,11 @@ export const createHostPropertyController = async (req, res) => {
                 contact: Number(parsedOwner.contact)
             },
             maxGuests: Number(maxGuests),
+            rooms: Number(rooms),
             mainImage: mainImagePath,
             additionalImages: additionalImagePaths,
-            host: req.hostData._id, // Set the host from authenticated user
-            status: 'pending' // Set initial status as pending
+            host: req.hostData._id,
+            status: 'pending'
         });
 
         // Save the host property
@@ -209,13 +211,14 @@ export const approveHostPropertyController = async (req, res) => {
             description: hostProperty.description,
             rules: hostProperty.rules,
             amenities: hostProperty.amenities,
-            customAmenities: hostProperty.customAmenities, // Include custom amenities
+            customAmenities: hostProperty.customAmenities,
             location: hostProperty.location,
             address: hostProperty.address,
             owner: hostProperty.owner,
             mainImage: hostProperty.mainImage,
             additionalImages: hostProperty.additionalImages,
             maxGuests: hostProperty.maxGuests,
+            rooms: hostProperty.rooms,
             host: hostProperty.host,
             isActive: true
         });
@@ -299,7 +302,7 @@ export const getHostPropertyByIdController = async (req, res) => {
             ? req.hostData._id.toString('hex')
             : req.hostData._id;
         const hostProperty = await Property.findOne({ host: hostId })
-            
+
 
         if (!hostProperty) {
             return res.status(404).json({
