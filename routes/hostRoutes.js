@@ -9,6 +9,8 @@ import {
     approveHostController,
     rejectHostController,
     firebaseRegisterController,
+    firebaseLoginController,
+    
 
 } from '../controllers/hostController.js';
 
@@ -77,7 +79,7 @@ const upload = multer({
 });
 
 // Public routes
-hostRouter.post('/register', upload.array('propertyPhotos', 10), createHostController);
+hostRouter.post('/register',verifyToken, upload.array('propertyPhotos', 10), createHostController);
 hostRouter.post('/login', loginHostController);
 hostRouter.get('/', verifyToken, isAdmin, getHostsController);
 hostRouter.put('/:hostId/approve', verifyToken, isAdmin, approveHostController);
@@ -85,7 +87,9 @@ hostRouter.delete('/:hostId/reject', verifyToken, isAdmin, rejectHostController)
 
 hostRouter.get('/profile', authenticateHost, getHostProfileController);
 
+
 hostRouter.put('/change-password', authenticateHost, changePasswordController);
 hostRouter.post('/firebase-register',upload.array('propertyPhotos', 10), firebaseRegisterController);
+hostRouter.post('/firebase-login',firebaseLoginController);
 
 export default hostRouter;

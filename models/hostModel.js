@@ -78,6 +78,10 @@ const hostSchema = new mongoose.Schema({
             }
         },
         amenities: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Amenity'
+        }],
+        customAmenities: [{
             type: String,
             trim: true
         }],
@@ -132,31 +136,8 @@ const hostSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Hash password before saving
-hostSchema.pre('save', async function (next) {
 
-    if (!this.isModified('password')) {
-        return next();
-    }
 
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        this.updatedAt = Date.now();
-        next();
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Method to compare password
-hostSchema.methods.comparePassword = async function (candidatePassword) {
-    try {
-        return await bcrypt.compare(candidatePassword, this.password);
-    } catch (error) {
-        throw error;
-    }
-};
 
 // Method to generate JWT token
 hostSchema.methods.generateAuthToken = function () {
@@ -172,6 +153,15 @@ hostSchema.methods.generateAuthToken = function () {
 
     );
     return token;
+};
+
+// Method to compare password
+hostSchema.methods.comparePassword = async function (candidatePassword) {
+    try {
+        return await bcrypt.compare(candidatePassword, this.password);
+    } catch (error) {
+        throw error;
+    }
 };
 
 // Method to generate refresh token

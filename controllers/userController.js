@@ -384,7 +384,7 @@ export const loginUserByFirebaseController = async (req, res) => {
         const email = decodedToken.email;
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(401).json({ success: false, message: 'User not found' }); 
+            return res.status(401).json({ success: false, message: 'User not found' });
         }
 
         const isMatch = await user.comparePassword(uid);
@@ -408,4 +408,30 @@ export const loginUserByFirebaseController = async (req, res) => {
         });
     }
 }
+export const isHostController = async (req, res) => {
+    try {
+        const user = await User.findById(req.jwt.id).populate('host');
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        const isHost = user.isHost;
+        const hostDetails = user.host || null;
+        res.status(200).json({
+            success: true,
+            data: {
+                isHost,
+                host: hostDetails
+            }
+        });
 
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching host status',
+            error: error.message
+        });
+    }
+}

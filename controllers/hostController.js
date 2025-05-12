@@ -1,12 +1,23 @@
 import Host from '../models/hostModel.js';
+import User from '../models/userModel.js';
 import { validationResult } from 'express-validator';
 import path from 'path';
 import fs from 'fs';
 import admin from '../firebaseAdmin.js';
+import HostProperty from '../models/hostPropertyModel.js';
 
 // Create new host
 export const createHostController = async (req, res) => {
     try {
+        // Get user from JWT token
+        const user = await User.findById(req.jwt.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
         // Process uploaded photos
         let photoPaths = [];
         if (req.files && req.files.length > 0) {
@@ -26,8 +37,9 @@ export const createHostController = async (req, res) => {
             }
         }
 
-        // Parse amenities and property rules if they're strings
-        let amenities = req.body.amenities;
+        // Parse amenities, customAmenities and property rules if they're strings
+        let amenities = req.body.amenities || [];
+        let customAmenities = req.body.customAmenities || [];
         let propertyRules = req.body.propertyRules;
 
         if (typeof amenities === 'string') {
@@ -36,6 +48,15 @@ export const createHostController = async (req, res) => {
             } catch (error) {
                 console.error('Error parsing amenities:', error);
                 amenities = [];
+            }
+        }
+
+        if (typeof customAmenities === 'string') {
+            try {
+                customAmenities = JSON.parse(customAmenities);
+            } catch (error) {
+                console.error('Error parsing custom amenities:', error);
+                customAmenities = [];
             }
         }
 
@@ -49,7 +70,7 @@ export const createHostController = async (req, res) => {
         }
 
         // Check if host already exists
-        const existingHost = await Host.findOne({ email: req.body.email });
+        const existingHost = await Host.findOne({ email: user.email });
         if (existingHost) {
             return res.status(400).json({
                 success: false,
@@ -60,8 +81,8 @@ export const createHostController = async (req, res) => {
         // Create new host
         const host = new Host({
             fullName: req.body.hostName,
-            email: req.body.email,
-            password: req.body.password,
+            email: user.email,
+            password: user.password, // Using user's password directly
             phoneNumber: req.body.hostPhone,
             bankingDetails: {
                 accountHolderName: bankDetails.accountHolder,
@@ -79,11 +100,12 @@ export const createHostController = async (req, res) => {
                     latitude: req.body.latitude || null,
                     longitude: req.body.longitude || null
                 },
-                amenities: amenities,
+                amenities: amenities, // Array of amenity ObjectIds
+                customAmenities: customAmenities, // Array of custom amenity strings
                 propertyRules: propertyRules,
                 propertyDetails: {
                     title: req.body.propertyTitle,
-                    numberOfRooms: req.body.numberOfRooms,
+                    rooms: req.body.numberOfRooms,
                     regularPrice: req.body.regularPrice,
                     weekendPrice: req.body.weekendPrice,
                     guestLimit: req.body.maxGuests,
@@ -95,6 +117,11 @@ export const createHostController = async (req, res) => {
 
         await host.save();
 
+        // Update user document
+        user.isHost = true;
+        user.host = host._id;
+        await user.save();
+
         // Generate token
         const authToken = host.generateAuthToken();
 
@@ -102,11 +129,16 @@ export const createHostController = async (req, res) => {
         const hostResponse = host.toObject();
         delete hostResponse.password;
 
+        // Populate amenities before sending response
+        const populatedHost = await Host.findById(host._id)
+            .populate('enquiry.amenities')
+            .lean();
+
         res.status(201).json({
             success: true,
             message: 'Host created successfully',
             data: {
-                host: hostResponse,
+                host: populatedHost,
                 authToken
             }
         });
@@ -181,7 +213,8 @@ export const loginHostController = async (req, res) => {
 // Get host profile
 export const getHostProfileController = async (req, res) => {
     try {
-        const host = await Host.findById(req.hostData._id);
+        const host = await Host.findById(req.hostData._id)
+            .populate('enquiry.amenities');
         if (!host) {
             return res.status(404).json({
                 success: false,
@@ -288,7 +321,8 @@ export const changePasswordController = async (req, res) => {
 
 export const getHostsController = async (req, res) => {
     try {
-        const hosts = await Host.find();
+        const hosts = await Host.find()
+            .populate('enquiry.amenities');
 
         // Separate hosts into active and pending
         const activeHosts = hosts.filter(host => host.isActive);
@@ -314,7 +348,8 @@ export const getHostsController = async (req, res) => {
 export const approveHostController = async (req, res) => {
     try {
         const { hostId } = req.params;
-        const host = await Host.findById(hostId);
+        const host = await Host.findById(hostId)
+            .populate('enquiry.amenities');
 
         if (!host) {
             return res.status(404).json({
@@ -325,6 +360,62 @@ export const approveHostController = async (req, res) => {
 
         host.isActive = true;
         await host.save();
+
+        // Create HostProperty instance from host.enquiry
+        if (host.enquiry && host.enquiry.propertyDetails) {
+            const propertyDetails = host.enquiry.propertyDetails;
+            const locationDetails = host.enquiry.locationDetails || {};
+            const amenities = host.enquiry.amenities || [];
+            const customAmenities = host.enquiry.customAmenities || [];
+            const propertyRules = host.enquiry.propertyRules || [];
+
+            // Compose address and location
+            const address = {
+                street: locationDetails.address || '',
+                city: locationDetails.city || '',
+                state: locationDetails.state || '',
+                postalCode: locationDetails.postalCode || ''
+            };
+            const location = {
+                type: 'Point',
+                coordinates: [
+                    locationDetails.longitude ? Number(locationDetails.longitude) : 0,
+                    locationDetails.latitude ? Number(locationDetails.latitude) : 0
+                ]
+            };
+
+            // Compose owner
+            const owner = {
+                name: host.fullName,
+                contact: Number(host.phoneNumber)
+            };
+
+            // Images
+            const mainImage = propertyDetails.photos && propertyDetails.photos.length > 0 ? propertyDetails.photos[0] : '';
+            const additionalImages = propertyDetails.photos && propertyDetails.photos.length > 1 ? propertyDetails.photos.slice(1) : [];
+
+            // Create property
+            const property = new HostProperty({
+                title: propertyDetails.title || '',
+                price: propertyDetails.regularPrice || 0,
+                weekendPrice: propertyDetails.weekendPrice || 0,
+                description: propertyDetails.description || '',
+                rules: propertyRules,
+                amenities: amenities.map(amenity => amenity._id || amenity), // Handle both populated and unpopulated cases
+                customAmenities: customAmenities,
+                location,
+                address,
+                owner,
+                mainImage,
+                additionalImages,
+                maxGuests: propertyDetails.guestLimit || 1,
+                rooms: propertyDetails.rooms || 1,
+                host: host._id,
+                status: 'pending',
+                isActive: true
+            });
+            await property.save();
+        }
 
         res.status(200).json({
             success: true,
@@ -467,7 +558,7 @@ export const firebaseRegisterController = async (req, res) => {
                 propertyRules: propertyRules,
                 propertyDetails: {
                     title: req.body.propertyTitle,
-                    numberOfRooms: req.body.numberOfRooms,
+                    rooms: req.body.numberOfRooms,
                     regularPrice: req.body.regularPrice,
                     weekendPrice: req.body.weekendPrice,
                     guestLimit: req.body.maxGuests,
@@ -503,3 +594,53 @@ export const firebaseRegisterController = async (req, res) => {
         });
     }
 };
+
+export const firebaseLoginController = async (req, res) => {
+    try {
+        const { idToken } = req.body;
+
+        // Verify and decode the Firebase ID token
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const email = decodedToken.email;
+        const uid = decodedToken.uid;
+
+        // Check if host already exists
+        const existingHost = await Host.findOne({ email }).select('+password');
+        if (!existingHost) {
+            return res.status(400).json({
+                success: false,
+                message: 'user not found'
+            });
+        }
+
+        // Check if uid matches password
+        const isMatch = await existingHost.comparePassword(uid);
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid credentials'
+            });
+        }
+
+        // Generate token
+        const authToken = existingHost.generateAuthToken();
+        const hostResponse = existingHost.toObject();
+        delete hostResponse.password;
+
+        res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            data: {
+                host: hostResponse,
+                authToken
+            }
+        });
+    } catch (error) {
+        console.error('Error in firebaseLoginController:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error in logging in with Firebase',
+            error: error.message
+        });
+    }
+}   
