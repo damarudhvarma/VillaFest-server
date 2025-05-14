@@ -183,61 +183,75 @@ export const searchPropertiesController = async (req, res) => {
         const {
             checkInDate,
             checkOutDate,
-            guests,
-            minPrice,
-            maxPrice,
+            guests = 1,
+            minPrice = 0,
+            maxPrice = Number.MAX_SAFE_INTEGER,
             location // city name
         } = req.body;
 
-        // Convert dates to Date objects
-        const checkIn = new Date(checkInDate);
-        const checkOut = new Date(checkOutDate);
+        console.log("Search params:", { checkInDate, checkOutDate, guests, minPrice, maxPrice, location });
 
-        // Validate dates
-        if (checkIn >= checkOut) {
-            return res.status(400).json({
-                success: false,
-                message: "Check-out date must be after check-in date"
-            });
+        // Build the base query object
+        const query = { isActive: true };
+
+        // Add guest filter
+        if (guests) {
+            query.maxGuests = { $gte: parseInt(guests) };
         }
 
-        // Build the query object
-        const query = {
-            maxGuests: { $gte: guests },
-            price: { $gte: minPrice, $lte: maxPrice },
-            isActive: true,
-            $or: [
-                // Properties with no bookings
+        // Add price filter if provided
+        if (minPrice !== undefined || maxPrice !== undefined) {
+            query.price = {};
+            if (minPrice !== undefined) query.price.$gte = parseInt(minPrice);
+            if (maxPrice !== undefined) query.price.$lte = parseInt(maxPrice);
+        }
+
+        // Add location filter if provided
+        if (location) {
+            query['address.city'] = { $regex: new RegExp(location, 'i') };
+        }
+
+        // Add date filter if both dates are provided
+        if (checkInDate && checkOutDate) {
+            // Convert dates to Date objects
+            const checkIn = new Date(checkInDate);
+            const checkOut = new Date(checkOutDate);
+
+            // Validate dates
+            if (checkIn >= checkOut) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Check-out date must be after check-in date"
+                });
+            }
+
+            // Find properties where:
+            // 1. No bookings exist, OR
+            // 2. No booking conflicts with the requested dates
+            query.$or = [
                 { bookedDates: { $size: 0 } },
-                // Properties with bookings that don't overlap with requested dates
                 {
                     bookedDates: {
                         $not: {
                             $elemMatch: {
-                                $or: [
-                                    // Check if any booking overlaps with the requested dates
-                                    {
-                                        checkIn: { $lte: checkOut },
-                                        checkOut: { $gte: checkIn }
-                                    }
-                                ]
+                                checkIn: { $lt: checkOut },
+                                checkOut: { $gt: checkIn }
                             }
                         }
                     }
                 }
-            ]
-        };
-
-        // Add city filter if location is provided
-        if (location) {
-            query['address.city'] = { $regex: new RegExp(location, 'i') }; // Case-insensitive search
+            ];
         }
+
+        console.log("Final query:", JSON.stringify(query, null, 2));
 
         // Find properties that match the criteria
         const properties = await Property.find(query)
             .populate('category', 'name image')
             .populate('amenities', 'name icon iconUrl')
             .sort({ createdAt: -1 });
+
+        console.log(`Found ${properties.length} properties`);
 
         return res.status(200).json({
             success: true,
@@ -279,3 +293,147 @@ export const getCitiesController = async (req, res) => {
         });
     }
 };
+
+export const getActiveHostPropertiesController = async (req, res) => {
+    try {
+        // Get host ID from authenticated host data
+        const hostId = req.hostData._id;
+
+        // Find all properties for this host
+        const properties = await Property.find({ host: hostId })
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon iconUrl')
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: "Host properties fetched successfully",
+            properties,
+            total: properties.length
+        });
+    } catch (error) {
+        console.error("Error fetching host properties:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching host properties",
+            error: error.message
+        });
+    }
+}
+
+export const blockDatesController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { blockedDates } = req.body;
+
+        // Validate input
+        if (!blockedDates || !Array.isArray(blockedDates) || blockedDates.length < 2) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide at least two dates in the blockedDates array"
+            });
+        }
+
+        // Find the property
+        const property = await Property.findById(id);
+        if (!property) {
+            return res.status(404).json({
+                success: false,
+                message: "Property not found"
+            });
+        }
+
+        // Verify the host owns this property
+        if (property.host.toString() !== req.hostData._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to block dates for this property"
+            });
+        }
+
+        // Get start and end dates
+        const startDate = new Date(blockedDates[0]);
+        const endDate = new Date(blockedDates[blockedDates.length - 1]);
+
+        // Validate dates
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid date format in blockedDates"
+            });
+        }
+
+        if (startDate >= endDate) {
+            return res.status(400).json({
+                success: false,
+                message: "End date must be after start date"
+            });
+        }
+
+        // Add the blocked date range
+        property.blockedDates.push({
+            startDate,
+            endDate
+        });
+
+        // Save the property
+        await property.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Dates blocked successfully",
+            blockedDates: property.blockedDates
+        });
+
+    } catch (error) {
+        console.error("Error blocking dates:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error blocking dates",
+            error: error.message
+        });
+    }
+}
+
+export const getBlockedDatesController = async (req, res) => {
+    try {
+        const hostId = req.hostData._id;
+
+        // Find all properties owned by this host
+        const properties = await Property.find({ host: hostId })
+            .select('_id title mainImage blockedDates');
+
+        if (!properties || properties.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No properties found for this host",
+                data: []
+            });
+        }
+
+        // Format the response data
+        const blockedDatesData = properties.map(property => ({
+            propertyId: property._id,
+            propertyTitle: property.title,
+            propertyImage: property.mainImage,
+            blockedDates: property.blockedDates.map(dateRange => ({
+                id: dateRange._id,
+                startDate: dateRange.startDate,
+                endDate: dateRange.endDate
+            }))
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: "Blocked dates fetched successfully",
+            data: blockedDatesData
+        });
+    } catch (error) {
+        console.error("Error fetching blocked dates:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching blocked dates",
+            error: error.message
+        });
+    }
+}

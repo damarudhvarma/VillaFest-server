@@ -104,8 +104,8 @@ const propertySchema = new mongoose.Schema({
     },
     rooms: {
         type: Number,
-        required: true,
-        min: 1
+        // required: true,
+        // min: 1
     },
     isActive: {
         type: Boolean,
@@ -124,6 +124,16 @@ const propertySchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Booking'
         }
+    }],
+    blockedDates: [{
+        startDate: {
+            type: Date,
+            required: true
+        },
+        endDate: {
+            type: Date,
+            required: true
+        },
     }]
 }, {
     timestamps: true

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { isAdmin, verifyToken } from "../middlewares/authMiddleware.js";
-import { createPropertyController, getAllPropertiesController, getCitiesController, getPropertyByIdController, searchPropertiesController } from "../controllers/propertyController.js";
+import { authenticateHost, isAdmin, verifyToken } from "../middlewares/authMiddleware.js";
+import { blockDatesController, createPropertyController, getActiveHostPropertiesController, getAllPropertiesController, getBlockedDatesController, getCitiesController, getPropertyByIdController, searchPropertiesController } from "../controllers/propertyController.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -65,5 +65,9 @@ propertyRouter.get('/get-properties', getAllPropertiesController);
 propertyRouter.get('/get-properties/:id', getPropertyByIdController);
 propertyRouter.post('/search-properties', searchPropertiesController);
 propertyRouter.get('/get-cities', getCitiesController);
+propertyRouter.get('/active', authenticateHost, getActiveHostPropertiesController);
+propertyRouter.post('/:id/block-dates', authenticateHost, blockDatesController);
+propertyRouter.get('/blocked-dates', authenticateHost, getBlockedDatesController);
+
 
 export default propertyRouter;
