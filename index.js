@@ -18,6 +18,7 @@ import paymentRouter from './routes/paymentRoutes.js';
 import bookingRouter from './routes/bookingRoutes.js';
 import couponRouter from './routes/couponRoutes.js';
 import hostCouponRouter from './routes/hostCouponRoutes.js';
+import ssoRouter from './routes/ssoLoginRoutes.js';
 const app = express();
 
 // Configure CORS with specific origin
@@ -45,6 +46,7 @@ app.use('/amenities', amenityRouter);
 app.use('/hosts', hostRouter);
 app.use('/host-properties', hostPropertyRouter);
 app.use('/banners', bannerRouter);
+app.use('/api',ssoRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/bookings', bookingRouter);
 app.use('/coupons',couponRouter);
