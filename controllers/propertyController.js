@@ -437,3 +437,38 @@ export const getBlockedDatesController = async (req, res) => {
         });
     }
 }
+
+export const getPropertyByCityController = async (req, res) => {
+    try {
+        // Get city from query or body
+        const city = req.query.city || req.body.city;
+        if (!city) {
+            return res.status(400).json({
+                success: false,
+                message: 'City is required.'
+            });
+        }
+
+        // Find properties by city (case-insensitive)
+        const properties = await Property.find({
+            'address.city': { $regex: new RegExp(city, 'i') }
+        })
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon iconUrl')
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: `Properties in ${city} fetched successfully`,
+            properties,
+            total: properties.length
+        });
+    } catch (error) {
+        console.error('Error fetching properties by city:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching properties by city',
+            error: error.message
+        });
+    }
+}

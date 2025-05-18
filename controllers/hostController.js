@@ -20,10 +20,15 @@ export const createHostController = async (req, res) => {
 
         // Process uploaded photos
         let photoPaths = [];
-        if (req.files && req.files.length > 0) {
-            // Use the relative directory path stored in the request
-            const relativeDir = req.relativeUploadDir || 'host-enquiry';
-            photoPaths = req.files.map(file => `/${relativeDir}/${path.basename(file.filename)}`);
+        if (req.files && req.files.propertyPhotos) {
+            const propertyTitle = req.body.propertyTitle.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+            photoPaths = req.files.propertyPhotos.map(file => `/host-enquiry/${propertyTitle}/${file.filename}`);
+        }
+
+        // Process government ID photos
+        let govIdPhotoPaths = [];
+        if (req.files && req.files.governmentIdPhotos) {
+            govIdPhotoPaths = req.files.governmentIdPhotos.map(file => `/host-enquiry/gov-id/${file.filename}`);
         }
 
         // Parse bank details if it's a string
@@ -80,15 +85,16 @@ export const createHostController = async (req, res) => {
 
         // Create new host
         const host = new Host({
-            fullName: req.body.hostName,
+            fullName: `${user.firstName} ${user.lastName}`,
             email: user.email,
             password: user.password, // Using user's password directly
-            phoneNumber: req.body.hostPhone,
+            phoneNumber: user.mobileNumber,
             bankingDetails: {
                 accountHolderName: bankDetails.accountHolder,
                 accountNumber: bankDetails.accountNumber,
                 bankName: bankDetails.bankName,
-                ifscCode: bankDetails.ifscCode
+                ifscCode: bankDetails.ifscCode,
+                govId: govIdPhotoPaths
             },
             enquiry: {
                 locationDetails: {
@@ -479,10 +485,9 @@ export const firebaseRegisterController = async (req, res) => {
     try {
         // Process uploaded photos
         let photoPaths = [];
-        if (req.files && req.files.length > 0) {
-            // Use the relative directory path stored in the request
+        if (req.files && req.files.propertyPhotos) {
             const relativeDir = req.relativeUploadDir || 'host-enquiry';
-            photoPaths = req.files.map(file => `/${relativeDir}/${path.basename(file.filename)}`);
+            photoPaths = req.files.propertyPhotos.map(file => `/${relativeDir}/${file.filename}`);
         }
 
         // Parse bank details if it's a string

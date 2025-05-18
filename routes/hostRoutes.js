@@ -10,7 +10,7 @@ import {
     rejectHostController,
     firebaseRegisterController,
     firebaseLoginController,
-    
+
 
 } from '../controllers/hostController.js';
 
@@ -28,58 +28,59 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure multer for file upload
+// Configure multer storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        // Create a default directory if property title is not available
-        let dir = uploadDir;
-        let relativeDir = "host-enquiry"; // This will be used for the database path
-
-        // If property title is available in the request body, use it to create a subdirectory
-        if (req.body && req.body.propertyTitle) {
-            const propertyTitle = req.body.propertyTitle.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-            dir = `${uploadDir}/${propertyTitle}`;
-            relativeDir = `host-enquiry/${propertyTitle}`;
-        } else {
-            // Use a timestamp-based directory if property title is not available
-            const timestamp = Date.now();
-            dir = `${uploadDir}/property-${timestamp}`;
-            relativeDir = `host-enquiry/property-${timestamp}`;
+        let uploadDir;
+        if (file.fieldname === 'propertyPhotos') {
+            // For property photos
+            const propertyTitle = req.body.propertyTitle?.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() || 'default';
+            uploadDir = path.join('public', 'host-enquiry', propertyTitle);
+        } else if (file.fieldname === 'governmentIdPhotos') {
+            // For government ID photos
+            uploadDir = path.join('public', 'host-enquiry', 'gov-id');
         }
 
         // Create directory if it doesn't exist
-        fs.mkdirSync(dir, { recursive: true });
+        fs.mkdirSync(uploadDir, { recursive: true });
 
-        // Store the relative directory path in the request for later use
-        req.relativeUploadDir = relativeDir;
+        // Store the relative path for later use
+        req.relativeUploadDir = uploadDir.split(path.sep).slice(1).join('/');
 
-        cb(null, dir);
+        cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        // Generate unique filename
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const extension = path.extname(file.originalname);
-        cb(null, `photo-${uniqueSuffix}${extension}`);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
+
+// Configure file filter
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG and JPG are allowed.'), false);
+    }
+};
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
-    fileFilter: function (req, file, cb) {
-        const allowedTypes = /jpeg|jpg|png/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (extname && mimetype) {
-            return cb(null, true);
-        }
-        cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
     }
 });
 
+// Configure the fields
+const uploadFields = upload.fields([
+    { name: 'propertyPhotos', maxCount: 10 },
+    { name: 'governmentIdPhotos', maxCount: 5 }
+]);
+
 // Public routes
-hostRouter.post('/register',verifyToken, upload.array('propertyPhotos', 10), createHostController);
+hostRouter.post('/register', verifyToken, uploadFields, createHostController);
 hostRouter.post('/login', loginHostController);
 hostRouter.get('/', verifyToken, isAdmin, getHostsController);
 hostRouter.put('/:hostId/approve', verifyToken, isAdmin, approveHostController);
@@ -89,7 +90,7 @@ hostRouter.get('/profile', authenticateHost, getHostProfileController);
 
 
 hostRouter.put('/change-password', authenticateHost, changePasswordController);
-hostRouter.post('/firebase-register',upload.array('propertyPhotos', 10), firebaseRegisterController);
-hostRouter.post('/firebase-login',firebaseLoginController);
+hostRouter.post('/firebase-register', uploadFields, firebaseRegisterController);
+hostRouter.post('/firebase-login', firebaseLoginController);
 
 export default hostRouter;

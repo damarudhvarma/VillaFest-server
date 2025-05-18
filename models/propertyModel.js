@@ -104,8 +104,8 @@ const propertySchema = new mongoose.Schema({
     },
     rooms: {
         type: Number,
-        // required: true,
-        // min: 1
+        required: true,
+        min: 1
     },
     isActive: {
         type: Boolean,

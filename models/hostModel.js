@@ -52,7 +52,15 @@ const hostSchema = new mongoose.Schema({
             trim: true,
             uppercase: true,
             match: [/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Please enter a valid IFSC code']
-        }
+        },
+        upiId: {
+            type: String,
+            trim: true
+        },
+        govId: [{
+            type: String,
+            trim: true
+        }]
     },
     enquiry: {
         locationDetails: {
@@ -75,6 +83,14 @@ const hostSchema = new mongoose.Schema({
             country: {
                 type: String,
                 trim: true
+            },
+            latitude: {
+                type: Number,
+                default: null
+            },
+            longitude: {
+                type: Number,
+                default: null
             }
         },
         amenities: [{
