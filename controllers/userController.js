@@ -312,8 +312,9 @@ export const removeFromWishlistController = async (req, res) => {
 export const registerUserByFirebaseController = async (req, res) => {
     try {
         const { idToken, email, firstName, lastName, mobileNumber } = req.body;
+        const lastNameValue = !lastName || lastName.trim() === "" ? " " : lastName;
 
-        if (!idToken || !email || !firstName || !lastName || !mobileNumber) {
+        if (!idToken || !email || !firstName || !mobileNumber) {
             return res.status(400).json({
                 success: false,
                 message: 'All fields are required: idToken, email, firstName, lastName, mobileNumber'
@@ -344,7 +345,7 @@ export const registerUserByFirebaseController = async (req, res) => {
         // Create new user with Firebase UID as password
         const user = new User({
             firstName,
-            lastName,
+            lastName: lastNameValue,
             mobileNumber,
             email,
             password: decodedToken.uid // Using Firebase UID as password

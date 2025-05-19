@@ -9,7 +9,6 @@ export const createHostPropertyController = async (req, res) => {
     try {
         const {
             title,
-            category,
             price,
             weekendPrice,
             description,
@@ -53,13 +52,7 @@ export const createHostPropertyController = async (req, res) => {
             : [];
 
         // Find the category and increment its properties count
-        const categoryDoc = await Category.findById(category);
-        if (!categoryDoc) {
-            return res.status(404).json({
-                success: false,
-                message: "Category not found"
-            });
-        }
+
 
         // Validate that all amenities exist
         const amenityDocs = await Amenity.find({ _id: { $in: selectedAmenities } });
@@ -77,7 +70,6 @@ export const createHostPropertyController = async (req, res) => {
         // Create the host property with all details
         const hostProperty = new HostProperty({
             title,
-            category,
             price: decreasedPrice,
             weekendPrice: decreasedWeekendPrice,
             description,
@@ -109,9 +101,8 @@ export const createHostPropertyController = async (req, res) => {
         // Save the host property
         const savedHostProperty = await hostProperty.save();
 
-        // Increment the category's properties count
-        categoryDoc.properties += 1;
-        await categoryDoc.save();
+
+
 
         // Populate the saved property with category and amenities data
         const populatedHostProperty = await HostProperty.findById(savedHostProperty._id)
@@ -159,7 +150,7 @@ export const getHostPropertiesController = async (req, res) => {
 export const getAllHostPropertiesController = async (req, res) => {
     try {
         const hostProperties = await HostProperty.find()
-            .populate('category', 'name image')
+            .populate('host', 'fullName email phoneNumber')
             .lean();
 
         res.status(200).json(hostProperties);

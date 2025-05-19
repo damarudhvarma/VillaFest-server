@@ -7,7 +7,7 @@ export const createPropertyController = async (req, res) => {
     try {
         const {
             title,
-            category,
+           
             price,
             weekendPrice,
             description,
@@ -47,14 +47,6 @@ export const createPropertyController = async (req, res) => {
             ? req.files.additionalImages.map(file => `/properties/${propertyTitle}/${file.filename}`)
             : [];
 
-        // Find the category and increment its properties count
-        const categoryDoc = await Category.findById(category);
-        if (!categoryDoc) {
-            return res.status(404).json({
-                success: false,
-                message: "Category not found"
-            });
-        }
 
         // Validate that all amenities exist
         const amenityDocs = await Amenity.find({ _id: { $in: parsedAmenities } });
@@ -68,7 +60,6 @@ export const createPropertyController = async (req, res) => {
         // Create the property with location coordinates and image paths
         const property = new Property({
             title,
-            category,
             price: Number(price),
             weekendPrice: Number(weekendPrice),
             description,
@@ -98,10 +89,8 @@ export const createPropertyController = async (req, res) => {
         // Save the property
         const savedProperty = await property.save();
 
-        // Increment the category's properties count
-        categoryDoc.properties += 1;
-        await categoryDoc.save();
-
+     
+       
         // Populate the saved property with category and amenities data
         const populatedProperty = await Property.findById(savedProperty._id)
             .populate('category', 'name image')
