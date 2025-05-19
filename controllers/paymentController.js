@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import Booking from '../models/bookingsModel.js';
 import Property from '../models/propertyModel.js';
 import dotenv from 'dotenv';
+import { sendBookingConfirmationEmail } from '../methods/bookingConfirmationEmail.js';
 
 // Ensure environment variables are loaded
 dotenv.config();
@@ -262,6 +263,19 @@ export const verifyPayment = async (req, res) => {
 
         // Save the updated property
         await property.save();
+
+        // Send booking confirmation email
+        try {
+            // Populate the booking with user and property details
+            const populatedBooking = await Booking.findById(savedBooking._id)
+                .populate('user', 'firstName lastName email mobileNumber')
+                .populate('property', 'title address.street address.city address.state address.postalCode');
+
+            await sendBookingConfirmationEmail(populatedBooking);
+        } catch (emailError) {
+            console.error('Error sending booking confirmation email:', emailError);
+            // Don't fail the request if email fails
+        }
 
         return res.status(200).json({
             success: true,

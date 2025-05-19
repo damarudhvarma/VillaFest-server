@@ -7,6 +7,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { sendBookingCancellationEmail } from '../methods/bookingCancellationEmail.js';
 
 dotenv.config();
 
@@ -170,7 +171,7 @@ export const cancelBooking = async (req, res) => {
         const booking = await Booking.findOne({
             _id: bookingId,
             user: req.jwt.id
-        });
+        }).populate('user').populate('property');
 
         if (!booking) {
             return res.status(404).json({
@@ -279,6 +280,21 @@ export const cancelBooking = async (req, res) => {
             }
         );
 
+        // Prepare refund details for email
+        const refundDetails = refundResponse ? {
+            amount: refundAmount,
+            status: refundResponse.status,
+            referenceId: refundResponse.receipt
+        } : null;
+
+        // Send cancellation email
+        try {
+            await sendBookingCancellationEmail(booking, refundDetails);
+        } catch (emailError) {
+            console.error('Error sending cancellation email:', emailError);
+            // Don't return error response as the booking is already cancelled
+        }
+
         res.status(200).json({
             success: true,
             message: 'Booking cancelled successfully',
@@ -376,7 +392,7 @@ export const getHostPropertyBookings = async (req, res) => {
 export const generateInvoice = async (req, res) => {
     try {
         const { bookingId } = req.params;
-        console.log(bookingId);
+
 
         // Find the booking
         const booking = await Booking.findById(bookingId)
