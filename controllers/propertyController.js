@@ -7,7 +7,7 @@ export const createPropertyController = async (req, res) => {
     try {
         const {
             title,
-           
+
             price,
             weekendPrice,
             description,
@@ -89,8 +89,8 @@ export const createPropertyController = async (req, res) => {
         // Save the property
         const savedProperty = await property.save();
 
-     
-       
+
+
         // Populate the saved property with category and amenities data
         const populatedProperty = await Property.findById(savedProperty._id)
             .populate('category', 'name image')
@@ -457,6 +457,41 @@ export const getPropertyByCityController = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Error fetching properties by city',
+            error: error.message
+        });
+    }
+}
+
+export const getPropertyByStateController = async (req, res) => {
+    try {
+        // Get state from query or body
+        const state = req.query.state || req.body.state;
+        if (!state) {
+            return res.status(400).json({
+                success: false,
+                message: 'State is required.'
+            });
+        }
+
+        // Find properties by state (case-insensitive)
+        const properties = await Property.find({
+            'address.state': { $regex: new RegExp(state, 'i') }
+        })
+            .populate('category', 'name image')
+            .populate('amenities', 'name icon iconUrl')
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: `Properties in ${state} fetched successfully`,
+            properties,
+            total: properties.length
+        });
+    } catch (error) {
+        console.error('Error fetching properties by state:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching properties by state',
             error: error.message
         });
     }
